@@ -173,7 +173,7 @@ addCommand({ pattern: "onMessage", access: "all", dontAddCommandList: true }, as
     const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text;
     if (!quotedText) return;
     
-    if (quotedText.includes("RORONOA ZORO MENU") || quotedText.includes("RORONOA ZORO DASHBOARD") || quotedText.includes("Zoro Bot Dashboard")) {
+    if (quotedText.includes("RORONOA ZORO MENU") || quotedText.includes("RORONOA ZORO DASHBOARD") || quotedText.includes("RORONOA ZORO CONSOLE") || quotedText.includes("Zoro Bot Dashboard")) {
         const categoryMap = {
             "1": "group",
             "2": "download",
