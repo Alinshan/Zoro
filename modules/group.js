@@ -532,7 +532,10 @@ addCommand({pattern: "^gpp ?(.*)", desc:"Allows you to change the group icon/pro
                 }
             };
 
-            const msgToPrep = generateWAMessageFromContent(groupId, interactiveMsg, { quoted: rawMessage.messages[0] });
+            const msgToPrep = generateWAMessageFromContent(groupId, interactiveMsg, {
+                userJid: sock.user.id,
+                quoted: rawMessage.messages[0]
+            });
             await sock.relayMessage(groupId, msgToPrep.message, { messageId: msgToPrep.key.id });
             return;
         } else if (msg.message?.imageMessage) {
@@ -584,7 +587,10 @@ addCommand({pattern: "^gpp ?(.*)", desc:"Allows you to change the group icon/pro
                 }
             };
 
-            const msgToPrep = generateWAMessageFromContent(groupId, interactiveMsg, { quoted: rawMessage.messages[0] });
+            const msgToPrep = generateWAMessageFromContent(groupId, interactiveMsg, {
+                userJid: sock.user.id,
+                quoted: rawMessage.messages[0]
+            });
             await sock.relayMessage(groupId, msgToPrep.message, { messageId: msgToPrep.key.id });
             return;
         } else {

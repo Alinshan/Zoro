@@ -83,7 +83,10 @@ addCommand( {pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: tru
                 }
             };
 
-            const msgToPrep = generateWAMessageFromContent(grupId, interactiveMsg, { quoted: rawMessage.messages[0] });
+            const msgToPrep = generateWAMessageFromContent(grupId, interactiveMsg, {
+                userJid: sock.user.id,
+                quoted: rawMessage.messages[0]
+            });
             await sock.relayMessage(grupId, msgToPrep.message, { messageId: msgToPrep.key.id });
             return;
         } catch (err) {

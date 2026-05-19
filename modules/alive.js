@@ -88,7 +88,10 @@ addCommand({ pattern: "^alive$", access: "all", desc: "_Check if the bot is aliv
             }
         };
 
-        const msgToPrep = generateWAMessageFromContent(grupId, interactiveMsg, { quoted: rawMessage.messages[0] });
+        const msgToPrep = generateWAMessageFromContent(grupId, interactiveMsg, {
+            userJid: sock.user.id,
+            quoted: rawMessage.messages[0]
+        });
         await sock.relayMessage(grupId, msgToPrep.message, { messageId: msgToPrep.key.id });
 
         if (msg.key.fromMe) {
