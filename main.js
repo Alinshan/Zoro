@@ -330,45 +330,34 @@ async function Primon() {
   })
 
   // ── Poll vote handler for interactive menu ────────────────────────────────
-  sock.ev.on('messages.upsert', async ({ messages }) => {
-    for (const message of messages) {
+  sock.ev.on('messages.update', async (events) => {
+    for (const { key, update } of events) {
       try {
-        if (!message.message?.pollUpdateMessage) continue;
+        if (!update.pollUpdates) continue;
 
-        const pollUpdate = message.message.pollUpdateMessage;
-        const pollMsgKey = pollUpdate.pollCreationMessageKey;
-        if (!pollMsgKey) continue;
-
-        // Look up the original poll from our in-memory store
-        const pollStore = global.getStoredMessage(pollMsgKey.remoteJid, pollMsgKey.id);
+        // Retrieve the original poll message from our in-memory store
+        const pollStore = global.getStoredMessage(key.remoteJid, key.id);
         if (!pollStore?.message?.pollCreationMessage) {
-          console.log('[poll-handler] Poll message not in store yet — key:', pollMsgKey.id);
+          console.log('[poll-handler] Original poll message not found in memory store:', key.id);
           continue;
         }
 
         const pollName = pollStore.message.pollCreationMessage.name || "";
-        if (!pollName.includes("Zoro Menu")) continue; // Only our menu polls
+        if (!pollName.includes("Zoro Menu")) continue;
 
-        // Decode voted option (WhatsApp sends SHA256 hashes of option names)
-        const crypto = require('crypto');
-        const options = pollStore.message.pollCreationMessage.options || [];
-        const votes = pollUpdate.vote?.selectedOptions || [];
-        if (votes.length === 0) continue;
+        // Use Baileys utility to decrypt and aggregate votes
+        const { getAggregateVotesInPollMessage } = require('@whiskeysockets/baileys');
+        const pollVote = await getAggregateVotesInPollMessage({
+          message: pollStore.message,
+          pollUpdates: update.pollUpdates,
+        });
 
-        let selectedOption = null;
-        for (const opt of options) {
-          const hash = crypto.createHash('sha256').update(opt.optionName).digest();
-          const matched = votes.some(v => {
-            const buf = Buffer.isBuffer(v) ? v : Buffer.from(v, 'base64');
-            return buf.equals(hash);
-          });
-          if (matched) { selectedOption = opt.optionName; break; }
-        }
+        if (!pollVote || pollVote.length === 0) continue;
 
-        if (!selectedOption) {
-          console.log('[poll-handler] Could not match voted option hash. votes:', votes.length, 'options:', options.map(o => o.optionName));
-          continue;
-        }
+        // Find the option with the most votes (or the one they just voted for)
+        // pollVote returns array of { name: 'option string', voters: ['jid'] }
+        const votedOption = pollVote.find(v => v.voters.length > 0)?.name;
+        if (!votedOption) continue;
 
         const categoryMap = {
           "👥 Group Admin": "group",
@@ -377,13 +366,16 @@ async function Primon() {
           "📜 All Commands": "all"
         };
 
-        const category = categoryMap[selectedOption];
+        const category = categoryMap[votedOption];
         if (!category) continue;
 
-        const chatId = message.key.remoteJid;
-        const userId = message.key.participant || message.key.remoteJid;
-        const isSudo = message.key.fromMe || global.isSudo(userId);
-        const fakeMsg = { key: { remoteJid: chatId, participant: userId, fromMe: message.key.fromMe } };
+        // Figure out who voted based on the voters array
+        const voterJid = pollVote.find(v => v.voters.length > 0)?.voters[0];
+        if (!voterJid) continue;
+
+        const chatId = key.remoteJid;
+        const isSudo = voterJid === sock.user.id.split(':')[0] + '@s.whatsapp.net' || global.isSudo(voterJid);
+        const fakeMsg = { key: { remoteJid: chatId, participant: voterJid, fromMe: voterJid.startsWith(sock.user.id.split(':')[0]) } };
 
         if (typeof global.buildCategoryText !== 'function') {
           await global.reportError('poll-handler', new Error('buildCategoryText not loaded yet'));
@@ -391,7 +383,13 @@ async function Primon() {
         }
 
         const menuText = global.buildCategoryText(category, global.commands, fakeMsg, sock, isSudo);
-        await sock.sendMessage(chatId, { text: menuText }, { quoted: message });
+        
+        // Quote the original poll message
+        const quotedMsg = {
+          key,
+          message: pollStore.message
+        };
+        await sock.sendMessage(chatId, { text: menuText }, { quoted: quotedMsg });
 
       } catch (pollErr) {
         await global.reportError('poll-handler', pollErr);
