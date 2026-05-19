@@ -144,7 +144,7 @@ async function Primon() {
     } else if (connection === 'open') {
       console.log('The connection is opened.');
       const usrId = sock.user.id;
-      const mappedId = usrId.split(':')[0] + `@s.whatsapp.net`;
+      const mappedId = usrId.split(':')[0].split('@')[0] + `@s.whatsapp.net`;
       if (!global.similarity) global.similarity = await import('string-similarity-js');
       await sock.sendMessage(mappedId, { text: "_Zoro Online!_\n\n_Use_ ```" + global.handlers[0] + "menu``` _to see the list of commands._" });;
     }
@@ -156,7 +156,8 @@ async function Primon() {
 
       for (let {pushName, key} of msg.messages) {
         if (pushName) {
-          const sender = key.participant ||(key.fromMe? sock.user.id.split(":")[0] + "@s.whatsapp.net": key.remoteJid);
+          const rawSender = key.participant || (key.fromMe ? sock.user.id : key.remoteJid);
+          const sender = rawSender.split(':')[0].split('@')[0] + "@s.whatsapp.net";
           global.database.users[sender] = pushName;
         }
       }
@@ -173,7 +174,7 @@ async function Primon() {
         if (msg.key.fromMe == false) {
           msg.key.participant = msg.key.remoteJid
         } else {
-          msg.key.participant = sock.user.id.split(':')[0] + `@s.whatsapp.net` 
+          msg.key.participant = sock.user.id.split(':')[0].split('@')[0] + `@s.whatsapp.net` 
         }
       }
 
@@ -359,7 +360,8 @@ global.downloadMedia = async (message, type, filepath) => {
 global.checkAdmin = async function (msg, sock, groupId, number = false) {
   try {
     const groupMetadata = await sock.groupMetadata(groupId);
-    let Number = number ? number : sock.user.id.split(":")[0] + "@s.whatsapp.net";
+    let Number = number ? number : sock.user.id;
+    Number = Number.split(':')[0].split('@')[0] + "@s.whatsapp.net";
     return groupMetadata.participants.some(participant =>
       participant.id === Number && participant.admin
     );
