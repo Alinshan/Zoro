@@ -5,7 +5,73 @@ addCommand( {pattern: "onMessage", dontAddCommandList: true, access: "all"}, asy
         for (const filter of chatFilters.filters) {
             if (new RegExp(filter.incoming).test(msg.text)) {
                 if (msg.text.startsWith(".filter add") || msg.text.startsWith(".filter delete")) return;
-                if (!msg.key.fromMe) return await sock.sendMessage(msg.key.remoteJid, { text: filter.outgoing }, { quoted: rawMessage.messages[0] });
+                if (msg.key.fromMe) return;
+
+                const outgoing = filter.outgoing.trim();
+                const isUrlOrPath = outgoing.startsWith("http://") || outgoing.startsWith("https://") || outgoing.startsWith("./");
+
+                if (isUrlOrPath) {
+                    // 1. Audio / Voice Note
+                    const isAudio = /\.(mp3|ogg|wav|m4a|aac|opus)(\?.*)?$/i.test(outgoing) || outgoing.startsWith("audio:") || outgoing.startsWith("vn:");
+                    if (isAudio) {
+                        let audioUrl = outgoing.replace(/^(audio:|vn:)/i, "").trim();
+                        const asVoiceNote = !outgoing.startsWith("audio:");
+                        return await sock.sendMessage(msg.key.remoteJid, {
+                            audio: { url: audioUrl },
+                            mimetype: 'audio/ogg; codecs=opus',
+                            ptt: asVoiceNote
+                        }, { quoted: rawMessage.messages[0] });
+                    }
+
+                    // 2. Video
+                    const isVideo = /\.(mp4|gif|mkv|webm|avi)(\?.*)?$/i.test(outgoing) || outgoing.startsWith("video:");
+                    if (isVideo) {
+                        let videoUrl = outgoing.replace(/^video:/i, "").trim();
+                        return await sock.sendMessage(msg.key.remoteJid, {
+                            video: { url: videoUrl }
+                        }, { quoted: rawMessage.messages[0] });
+                    }
+
+                    // 3. Image
+                    const isImage = /\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(outgoing) || outgoing.startsWith("image:");
+                    if (isImage) {
+                        let imageUrl = outgoing.replace(/^image:/i, "").trim();
+                        return await sock.sendMessage(msg.key.remoteJid, {
+                            image: { url: imageUrl }
+                        }, { quoted: rawMessage.messages[0] });
+                    }
+                }
+
+                // 4. Prefix overrides (vn:, audio:, video:, image:, sticker:)
+                if (outgoing.startsWith("vn:") || outgoing.startsWith("audio:")) {
+                    let audioUrl = outgoing.replace(/^(audio:|vn:)/i, "").trim();
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        audio: { url: audioUrl },
+                        mimetype: 'audio/ogg; codecs=opus',
+                        ptt: outgoing.startsWith("vn:")
+                    }, { quoted: rawMessage.messages[0] });
+                }
+                if (outgoing.startsWith("video:")) {
+                    let videoUrl = outgoing.replace(/^video:/i, "").trim();
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        video: { url: videoUrl }
+                    }, { quoted: rawMessage.messages[0] });
+                }
+                if (outgoing.startsWith("image:")) {
+                    let imageUrl = outgoing.replace(/^image:/i, "").trim();
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        image: { url: imageUrl }
+                    }, { quoted: rawMessage.messages[0] });
+                }
+                if (outgoing.startsWith("sticker:") || outgoing.startsWith("st:")) {
+                    let stickerUrl = outgoing.replace(/^(sticker:|st:)/i, "").trim();
+                    return await sock.sendMessage(msg.key.remoteJid, {
+                        sticker: { url: stickerUrl }
+                    }, { quoted: rawMessage.messages[0] });
+                }
+
+                // Default: send as standard text message
+                return await sock.sendMessage(msg.key.remoteJid, { text: outgoing }, { quoted: rawMessage.messages[0] });
             }
         }
     }
