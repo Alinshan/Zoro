@@ -407,3 +407,162 @@ addCommand({pattern: "^unmute ?(.*)", desc:"Allows you to unmute the group.", us
         return await sock.sendMessage(groupId, {text: "_✅ The group has been unmuted!_"}, { quoted: rawMessage.messages[0] });
     }
 }));
+
+addCommand({pattern: "^gpp ?(.*)", desc:"Allows you to change the group icon/profile picture with interactive buttons. Reply to an image.", access: "all", onlyInGroups: true}, (async (msg, match, sock, rawMessage) => {
+    const groupId = msg.key.remoteJid;
+    const arg = match[1].trim();
+
+    // Check sender admin status
+    var admins = await global.getAdmins(groupId);
+    if (!admins.includes(msg.key.participant)) {
+        if (msg.key.fromMe) {
+            return await sock.sendMessage(groupId, {text: "_❌ Sorry, You are not an admin in this group!_", edit: msg.key})
+        } else {
+            return await sock.sendMessage(groupId, {text: "_❌ Sorry, You are not an admin in this group!_"}, { quoted: rawMessage.messages[0] })
+        }
+    }
+
+    // Check bot admin status
+    if (!await global.checkAdmin(msg, sock, groupId)) {
+        if (msg.key.fromMe) {
+            return await sock.sendMessage(groupId, {text: "_❌ Sorry, I am not an admin in this group!_", edit: msg.key})
+        } else {
+            return await sock.sendMessage(groupId, {text: "_❌ Sorry, I am not an admin in this group!_"}, { quoted: rawMessage.messages[0] })
+        }
+    };
+
+    const tempFile = `./src/gpp_${groupId.replace(/@/g, '_').replace(/\./g, '_')}.png`;
+
+    // Handle button action click responses
+    if (arg.startsWith("set_g_")) {
+        if (fs.existsSync(tempFile)) {
+            try {
+                const imageBuffer = fs.readFileSync(tempFile);
+                await sock.updateProfilePicture(groupId, imageBuffer);
+                try { fs.unlinkSync(tempFile); } catch {}
+                
+                const successText = "_✅ Group profile picture updated successfully!_";
+                if (msg.key.fromMe) {
+                    return await sock.sendMessage(groupId, {text: successText, edit: msg.key});
+                } else {
+                    return await sock.sendMessage(groupId, {text: successText}, { quoted: rawMessage.messages[0] });
+                }
+            } catch (err) {
+                try { fs.unlinkSync(tempFile); } catch {}
+                const errorText = `_❌ Failed to update group profile picture: ${err.message || err}_`;
+                if (msg.key.fromMe) {
+                    return await sock.sendMessage(groupId, {text: errorText, edit: msg.key});
+                } else {
+                    return await sock.sendMessage(groupId, {text: errorText}, { quoted: rawMessage.messages[0] });
+                }
+            }
+        } else {
+            const noMediaText = "_❌ Temp image file not found or expired. Please reply to the image again!_";
+            if (msg.key.fromMe) {
+                return await sock.sendMessage(groupId, {text: noMediaText, edit: msg.key});
+            } else {
+                return await sock.sendMessage(groupId, {text: noMediaText}, { quoted: rawMessage.messages[0] });
+            }
+        }
+    }
+
+    if (arg.startsWith("cancel_g_")) {
+        try { fs.unlinkSync(tempFile); } catch {}
+        const cancelText = "_❌ Group profile picture update cancelled!_";
+        if (msg.key.fromMe) {
+            return await sock.sendMessage(groupId, {text: cancelText, edit: msg.key});
+        } else {
+            return await sock.sendMessage(groupId, {text: cancelText}, { quoted: rawMessage.messages[0] });
+        }
+    }
+
+    // Default flow: Reply to an image or upload one
+    try {
+        if (msg.quotedMessage && (msg.quotedMessage.imageMessage || (msg.quotedMessage.viewOnceMessageV2 && msg.quotedMessage.viewOnceMessageV2.message.imageMessage))) {
+            const imageMsg = msg.quotedMessage.imageMessage || msg.quotedMessage.viewOnceMessageV2.message.imageMessage;
+            
+            await global.downloadMedia(imageMsg, "image", tempFile);
+
+            const title = "🖼️ Group Icon Changer 🖼️";
+            const body = "Would you like to set this image as the new WhatsApp Group Icon?";
+            const footer = "© Zoro Bot Group Tools";
+            const buttons = [
+                {
+                    name: "quick_reply",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "✅ Yes, Set Icon",
+                        id: `.gpp set_g_${groupId.replace(/@/g, '_').replace(/\./g, '_')}`
+                    })
+                },
+                {
+                    name: "quick_reply",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "❌ Cancel",
+                        id: `.gpp cancel_g_${groupId.replace(/@/g, '_').replace(/\./g, '_')}`
+                    })
+                }
+            ];
+
+            await sock.sendMessage(groupId, {
+                interactiveMessage: {
+                    header: { title: title, hasMediaAttachment: false },
+                    body: { text: body },
+                    footer: { text: footer },
+                    nativeFlowMessage: {
+                        buttons: buttons
+                    }
+                }
+            }, { quoted: rawMessage.messages[0] });
+            return;
+        } else if (msg.message?.imageMessage) {
+            await global.downloadMedia(msg.message.imageMessage, "image", tempFile);
+
+            const title = "🖼️ Group Icon Changer 🖼️";
+            const body = "Would you like to set this image as the new WhatsApp Group Icon?";
+            const footer = "© Zoro Bot Group Tools";
+            const buttons = [
+                {
+                    name: "quick_reply",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "✅ Yes, Set Icon",
+                        id: `.gpp set_g_${groupId.replace(/@/g, '_').replace(/\./g, '_')}`
+                    })
+                },
+                {
+                    name: "quick_reply",
+                    buttonParamsJson: JSON.stringify({
+                        display_text: "❌ Cancel",
+                        id: `.gpp cancel_g_${groupId.replace(/@/g, '_').replace(/\./g, '_')}`
+                    })
+                }
+            ];
+
+            await sock.sendMessage(groupId, {
+                interactiveMessage: {
+                    header: { title: title, hasMediaAttachment: false },
+                    body: { text: body },
+                    footer: { text: footer },
+                    nativeFlowMessage: {
+                        buttons: buttons
+                    }
+                }
+            }, { quoted: rawMessage.messages[0] });
+            return;
+        } else {
+            const responseText = "_❌ Please reply to an image or upload an image with the command!_";
+            if (msg.key.fromMe) {
+                return await sock.sendMessage(groupId, {text: responseText, edit: msg.key});
+            } else {
+                return await sock.sendMessage(groupId, {text: responseText}, { quoted: rawMessage.messages[0] });
+            }
+        }
+    } catch (err) {
+        console.error(err);
+        const failText = `_❌ Failed to download or process image: ${err.message || err}_`;
+        if (msg.key.fromMe) {
+            return await sock.sendMessage(groupId, {text: failText, edit: msg.key});
+        } else {
+            return await sock.sendMessage(groupId, {text: failText}, { quoted: rawMessage.messages[0] });
+        }
+    }
+}));
