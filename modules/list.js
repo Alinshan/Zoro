@@ -3,7 +3,7 @@ const fs = require('fs');
 /**
  * Handles the "menu" command, which allows users to view a list of available commands and their descriptions.
  *
- * The command can be invoked with or without an argument. If an argument is provided, it will search for a matching command and display its details. If no argument is provided, it will display a list of all available commands.
+ * The command can be invoked with or without an argument. If no argument is provided, it displays a buttonised dashboard.
  *
  * @param {object} msg - The message object containing the command.
  * @param {string[]} match - An array containing the matched parts of the command pattern.
@@ -13,13 +13,121 @@ const fs = require('fs');
  */
 
 addCommand( {pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: true}, async (msg, match, sock, rawMessage) => {
-    const inputCommand = match[2].trim();
+    const inputCommand = match[2].trim().toLowerCase();
     let menuText = "";
 
     const userId = msg.key.participant || msg.key.remoteJid;
     const isSudo = msg.key.fromMe || global.isSudo(userId);
+    const grupId = msg.key.remoteJid;
     
-    if (inputCommand) {
+    if (!inputCommand) {
+        const title = "⚔️ Zoro Bot Dashboard ⚔️";
+        const bodyText = `*Hello @${(msg.key.participant || msg.key.remoteJid).split('@')[0]}!*\n\nWelcome to *Roronoa Zoro* WhatsApp Command Center.\n\nClick the category buttons below to view specific commands!`;
+        const footerText = "© Alinshan / Zoro Bot";
+        
+        const buttons = [
+            {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: "⚔️ All Commands",
+                    id: ".menu all"
+                })
+            },
+            {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: "👥 Group Admin",
+                    id: ".menu group"
+                })
+            },
+            {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: "📥 Downloader",
+                    id: ".menu download"
+                })
+            },
+            {
+                name: "quick_reply",
+                buttonParamsJson: JSON.stringify({
+                    display_text: "⚙️ Owner/Sudo",
+                    id: ".menu owner"
+                })
+            }
+        ];
+
+        try {
+            await sock.sendMessage(grupId, {
+                interactiveMessage: {
+                    header: { title: title, hasMediaAttachment: false },
+                    body: { text: bodyText },
+                    footer: { text: footerText },
+                    nativeFlowMessage: {
+                        buttons: buttons
+                    }
+                }
+            }, { quoted: rawMessage.messages[0] });
+            return;
+        } catch (err) {
+            console.error("Failed to send interactive message: ", err);
+            // Fallback to text dashboard if sending button fails
+            menuText = `💚 *Zoro Menu Dashboard* 💚\n\n` +
+                       `*Use these commands to navigate:*\n` +
+                       `• \`\`\`.menu all\`\`\` - Show all commands\n` +
+                       `• \`\`\`.menu group\`\`\` - Show group admin commands\n` +
+                       `• \`\`\`.menu download\`\`\` - Show downloader commands\n` +
+                       `• \`\`\`.menu owner\`\`\` - Show owner/sudo commands`;
+            
+            if (msg.key.fromMe) {
+                return await sock.sendMessage(grupId, { text: menuText, edit: msg.key });
+            } else {
+                return await sock.sendMessage(grupId, { text: menuText }, { quoted: rawMessage.messages[0] });
+            }
+        }
+    }
+
+    if (["all", "group", "download", "owner"].includes(inputCommand)) {
+        let filtered = [];
+        if (inputCommand === "all") {
+            filtered = global.commands;
+        } else if (inputCommand === "group") {
+            filtered = global.commands.filter(x => 
+                x.commandInfo.onlyInGroups || 
+                ["tagall", "tagadmin", "ban", "add", "promote", "demote", "mute", "unmute", "gmute", "ungmute"].some(p => 
+                    x.commandInfo.pattern.includes(p)
+                )
+            );
+        } else if (inputCommand === "download") {
+            filtered = global.commands.filter(x => 
+                ["video", "music", "tiktok", "insta", "wp", "ss", "dream"].some(p => 
+                    x.commandInfo.pattern.includes(p)
+                )
+            );
+        } else if (inputCommand === "owner") {
+            filtered = global.commands.filter(x => x.commandInfo.access === "sudo");
+        }
+
+        const listText = filtered
+            .filter(x => !x.commandInfo.dontAddCommandList &&
+                (x.commandInfo.access !== "sudo" || isSudo) &&
+                (!x.commandInfo.onlyInGroups || msg.key.remoteJid.endsWith('@g.us')) &&
+                !(msg.key.remoteJid.split("@")[0] === sock.user.id.split("@")[0] && x.commandInfo.notAvaliablePersonelChat))
+            .map((x, index, array) => {
+                const { pattern, desc, usage, warn } = x.commandInfo;
+                return `⌨️ \`\`\`${global.handlers[0]}${pattern.replace(/[\^\$\.\*\+\?\(\)\[\]\{\}\\\/]/g, '').replace("sS", "")}\`\`\`${desc ? `\nℹ️ ${desc}` : ''}${usage ? `\n💻 \`\`\`${usage}\`\`\`` : ''}${warn ? `\n⚠️ ${warn}` : ''}${index !== array.length - 1 ? '\n\n' : ''}`;
+            })
+            .join('');
+
+        const categoryNames = {
+            all: "⚔️ All Commands",
+            group: "👥 Group Admin Commands",
+            download: "📥 Downloader Commands",
+            owner: "⚙️ Owner/Sudo Commands"
+        };
+
+        menuText = `📜 *${categoryNames[inputCommand]}*\n\n${listText.trimEnd()}`;
+    } else {
+        // Single command details search
         var command = global.commands
         .filter(x => !x.commandInfo.dontAddCommandList &&
             (x.commandInfo.access !== "sudo" || isSudo) &&
@@ -75,23 +183,11 @@ addCommand( {pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: tru
                 menuText = `_❌ Command not found: ${inputCommand}_\n\n_Did you mean:_ ` + "```" + global.handlers[0] + modules_means[0].pattern + "```";
             }
         }
-    } else {
-        menuText = global.commands
-            .filter(x => !x.commandInfo.dontAddCommandList &&
-                (x.commandInfo.access !== "sudo" || isSudo) &&
-                (!x.commandInfo.onlyInGroups || msg.key.remoteJid.endsWith('@g.us')) &&
-                !(msg.key.remoteJid.split("@")[0] === sock.user.id.split("@")[0] && x.commandInfo.notAvaliablePersonelChat))
-            .map((x, index, array) => {
-                const { pattern, desc, usage, warn } = x.commandInfo;
-                return `⌨️ \`\`\`${global.handlers[0]}${pattern.replace(/[\^\$\.\*\+\?\(\)\[\]\{\}\\\/]/g, '').replace("sS", "")}\`\`\`${desc ? `\nℹ️ ${desc}` : ''}${usage ? `\n💻 \`\`\`${usage}\`\`\`` : ''}${warn ? `\n⚠️ ${warn}` : ''}${index !== array.length - 1 ? '\n\n' : ''}`;
-            })
-            .join('');
     }
 
-    const grupId = msg.key.remoteJid;
     if (msg.key.fromMe) {
-        return await sock.sendMessage(grupId, { text: `📜 *Zoro Menu*\n\n${menuText.trimEnd()}`, edit: msg.key });
+        return await sock.sendMessage(grupId, { text: menuText.trimEnd(), edit: msg.key });
     } else {
-        return await sock.sendMessage(grupId, { text: `📜 *Zoro Menu*\n\n${menuText.trimEnd()}`}, { quoted: rawMessage.messages[0]});
+        return await sock.sendMessage(grupId, { text: menuText.trimEnd() }, { quoted: rawMessage.messages[0] });
     }
-})
+});

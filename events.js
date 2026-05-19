@@ -55,19 +55,43 @@ function addCommand(commandInfo, callback) {
  */
 
 async function start_command(msg, sock, rawMessage) {  
-  const text =  
+  let text =  
     msg?.message?.conversation || msg?.message?.extendedTextMessage?.text;  
+
+  if (msg?.message?.buttonsResponseMessage?.selectedButtonId) {
+    text = msg.message.buttonsResponseMessage.selectedButtonId;
+  } else if (msg?.message?.templateButtonReplyMessage?.selectedId) {
+    text = msg.message.templateButtonReplyMessage.selectedId;
+  } else if (msg?.message?.interactiveResponseMessage?.nativeFlowResponseMessage?.paramsJson) {
+    try {
+      const parsed = JSON.parse(msg.message.interactiveResponseMessage.nativeFlowResponseMessage.paramsJson);
+      if (parsed && (parsed.id || parsed.selectedId)) {
+        text = parsed.id || parsed.selectedId;
+      }
+    } catch {}
+  }
   
   let matchedPrefix = false;  
   let validText = text;  
   
-  for (const prefix of PREFIX) {  
-    if (text?.trimStart().startsWith(prefix)) {  
-      matchedPrefix = true;  
-      validText = text.slice(prefix.length).trim();  
-      break;  
+  const isButtonReply = !!(msg?.message?.buttonsResponseMessage || msg?.message?.templateButtonReplyMessage || msg?.message?.interactiveResponseMessage);
+  if (isButtonReply) {
+    matchedPrefix = true;
+    for (const prefix of PREFIX) {  
+      if (text?.trimStart().startsWith(prefix)) {  
+        validText = text.slice(prefix.length).trim();  
+        break;  
+      }  
+    }
+  } else {
+    for (const prefix of PREFIX) {  
+      if (text?.trimStart().startsWith(prefix)) {  
+        matchedPrefix = true;  
+        validText = text.slice(prefix.length).trim();  
+        break;  
+      }  
     }  
-  }  
+  }
   
   let isCommand = false;
   var sortedCommands = commands.sort((a, b) => b.commandInfo.pattern.length - a.commandInfo.pattern.length);
