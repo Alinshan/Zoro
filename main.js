@@ -237,36 +237,58 @@ async function Primon() {
 
   sock.ev.on("group-participants.update", async (participant) => {
     if (global.database.blacklist.includes(participant.id)) return;
+    
+    const mentions = participant.participants;
+    const mentionText = mentions.map(p => `@${p.split('@')[0]}`).join(', ');
+
     if (participant.action === 'add') {
       const welcomeMessage = global.database.welcomeMessage.find(welcome => welcome.chat === participant.id);
       if (welcomeMessage) {
+        let content = welcomeMessage.content || "";
+        if (content.includes('@user')) {
+          content = content.replace(/@user/g, mentionText);
+        } else if (content) {
+          content = `${content}\n\n${mentionText}`;
+        } else {
+          content = mentionText;
+        }
+
         const mediaPath = `./welcome.${welcomeMessage.type}`;
         if (['image', 'video'].includes(welcomeMessage.type)) {
           fs.writeFileSync(mediaPath, welcomeMessage.media, "base64");
           const messageOptions = {
             [welcomeMessage.type]: { url: mediaPath },
-            caption: welcomeMessage.content || undefined,
-            mentions: participant.participants
+            caption: content || undefined,
+            mentions: mentions
           };
           await sock.sendMessage(participant.id, messageOptions);
         } else {
-          await sock.sendMessage(participant.id, { text: welcomeMessage.content, mentions: participant.participants });
+          await sock.sendMessage(participant.id, { text: content, mentions: mentions });
         }
       }
     } else if (participant.action === 'remove') {
       const goodbyeMessage = global.database.goodbyeMessage.find(goodbye => goodbye.chat === participant.id);
       if (goodbyeMessage) {
+        let content = goodbyeMessage.content || "";
+        if (content.includes('@user')) {
+          content = content.replace(/@user/g, mentionText);
+        } else if (content) {
+          content = `${content}\n\n${mentionText}`;
+        } else {
+          content = mentionText;
+        }
+
         const mediaPath = `./goodbye.${goodbyeMessage.type}`;
         if (['image', 'video'].includes(goodbyeMessage.type)) {
           fs.writeFileSync(mediaPath, goodbyeMessage.media, "base64");
           const messageOptions = {
             [goodbyeMessage.type]: { url: mediaPath },
-            caption: goodbyeMessage.content || undefined,
-            mentions: participant.participants
+            caption: content || undefined,
+            mentions: mentions
           };
           await sock.sendMessage(participant.id, messageOptions);
         } else {
-          await sock.sendMessage(participant.id, { text: goodbyeMessage.content, mentions: participant.participants });
+          await sock.sendMessage(participant.id, { text: content, mentions: mentions });
         }
       }
     }
