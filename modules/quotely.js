@@ -204,8 +204,7 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
                 }
             }
 
-            var codeText = quoted.conversation ? quoted.conversation : quoted.extendedTextMessage.text
-
+            var codeText = quoted.conversation || quoted.extendedTextMessage?.text || quoted.imageMessage?.caption || quoted.videoMessage?.caption || "";
             var codeTextArray = codeText.split(" ");
             var finalCodeText = "";
             var i2 = 0
@@ -218,7 +217,20 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
                   finalCodeText += codeTextArray[i] + " "
                 }
             }
-            finalCodeText = finalCodeText.trimEnd().trimStart()
+            finalCodeText = finalCodeText.trimEnd().trimStart();
+
+            const quotedParticipantJid = rawMessage.messages[0].message?.extendedTextMessage?.contextInfo?.participant || rawMessage.messages[0].key.participant || rawMessage.messages[0].key.remoteJid;
+            let quotedParticipantName = (global.database?.users && global.database.users[quotedParticipantJid]) || msg.pushName || "Zoro User";
+            if (quotedParticipantName && typeof quotedParticipantName === 'object') {
+                quotedParticipantName = quotedParticipantName.name || "Zoro User";
+            }
+
+            let quotedPfpUrl = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
+            try {
+                if (quotedParticipantJid) {
+                    quotedPfpUrl = await sock.profilePictureUrl(quotedParticipantJid, 'image');
+                }
+            } catch (err) {}
 
             payloadData = {
                 type: "quote",
@@ -233,9 +245,9 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
                         avatar: true,
                         from: {
                             id: 1,
-                            name: rawMessage.messages[0].message?.extendedTextMessage?.contextInfo?.participant ? global.database.users[rawMessage.messages[0].message?.extendedTextMessage?.contextInfo?.participant] :global.database.users[rawMessage.messages[0].key.participant ? rawMessage.messages[0].key.participant : rawMessage.messages[0].key.remoteJid],
+                            name: quotedParticipantName,
                             photo: {
-                                url: await sock.profilePictureUrl(rawMessage.messages[0].message?.extendedTextMessage?.contextInfo?.participant || global.database.users[rawMessage.messages[0].key.participant ? rawMessage.messages[0].key.participant : rawMessage.messages[0].key.remoteJid])
+                                url: quotedPfpUrl
                             }
                         },
                         text: finalCodeText,
@@ -267,7 +279,15 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
                   finalCodeText += codeTextArray[i] + " "
                 }
             }
-            finalCodeText = finalCodeText.trimEnd().trimStart()
+            finalCodeText = finalCodeText.trimEnd().trimStart();
+
+            const participantJid = msg.key.participant || msg.key.remoteJid || sock.user.id;
+            let pfpUrl = "https://cdn.pixabay.com/photo/2015/10/05/22/37/blank-profile-picture-973460_960_720.png";
+            try {
+                if (participantJid) {
+                    pfpUrl = await sock.profilePictureUrl(participantJid, 'image');
+                }
+            } catch (err) {}
 
             payloadData = {
                 type: "quote",
@@ -282,9 +302,9 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
                         avatar: true,
                         from: {
                             id: 1,
-                            name: msg.pushName,
+                            name: msg.pushName || "Zoro User",
                             photo: {
-                                url: await sock.profilePictureUrl(msg.key.participant)
+                                url: pfpUrl
                             }
                         },   
                         text: finalCodeText,
