@@ -87,6 +87,34 @@ const logger = pino({
   },
 });
 
+// ── In-memory message store (needed for poll vote resolution) ────────────────
+const messageStore = {};
+function storeMessage(jid, message) {
+  if (!messageStore[jid]) messageStore[jid] = {};
+  messageStore[jid][message.key.id] = message;
+  // Keep only last 200 messages per chat to avoid memory leaks
+  const keys = Object.keys(messageStore[jid]);
+  if (keys.length > 200) delete messageStore[jid][keys[0]];
+}
+function getStoredMessage(jid, id) {
+  return messageStore[jid]?.[id] || null;
+}
+global.getStoredMessage = getStoredMessage;
+
+// ── Global error reporter → DMs error to bot's own number ────────────────────
+global.reportError = async function(context, error) {
+  const errText = `*⚠️ Zoro Error [${context}]*\n\n` +
+                  `*Message:* ${error?.message || error}\n` +
+                  `*Stack:* \`\`\`${String(error?.stack || '').slice(0, 600)}\`\`\``;
+  console.error(`[${context}]`, error);
+  try {
+    if (sock?.user?.id) {
+      const botDm = sock.user.id.split(':')[0] + '@s.whatsapp.net';
+      await sock.sendMessage(botDm, { text: errText });
+    }
+  } catch {}
+};
+
 async function Primon() {
   const baileys = await import('@whiskeysockets/baileys');
   makeWASocket = baileys.default;
@@ -129,6 +157,11 @@ async function Primon() {
     browser: ["Ubuntu", "Chrome", "20.0.04"],
     auth: state,
     version: version,
+    // Provide getMessage so Baileys can re-decrypt poll votes
+    getMessage: async (key) => {
+      const stored = getStoredMessage(key.remoteJid, key.id);
+      return stored?.message || undefined;
+    }
   });
 
   sock.ev.on('connection.update', async (update) => {
@@ -154,11 +187,13 @@ async function Primon() {
     try {
       if (!msg.hasOwnProperty("messages") || msg.messages.length === 0) return;
 
-      for (let {pushName, key} of msg.messages) {
-        if (pushName) {
-          const rawSender = key.participant || (key.fromMe ? sock.user.id : key.remoteJid);
+      for (let m of msg.messages) {
+        // Store every message for poll resolution
+        if (m.key?.remoteJid && m.key?.id) storeMessage(m.key.remoteJid, m);
+        if (m.pushName) {
+          const rawSender = m.key.participant || (m.key.fromMe ? sock.user.id : m.key.remoteJid);
           const sender = rawSender.split(':')[0].split('@')[0] + "@s.whatsapp.net";
-          global.database.users[sender] = pushName;
+          global.database.users[sender] = m.pushName;
         }
       }
 
@@ -231,8 +266,7 @@ async function Primon() {
       await start_command(msg, sock, rawMessage);
 
     } catch (error) {
-      console.log(error);
-      await sock.sendMessage(sock.user.id, { text: `*⚠️ Zoro Error:*\n${error}` });
+      await global.reportError('command-handler', error);
     }
   });
 
@@ -305,30 +339,36 @@ async function Primon() {
         const pollMsgKey = pollUpdate.pollCreationMessageKey;
         if (!pollMsgKey) continue;
 
-        // Fetch the original poll message to read option names
-        const pollStore = await sock.loadMessage(pollMsgKey.remoteJid, pollMsgKey.id).catch(() => null);
-        if (!pollStore?.message?.pollCreationMessage) continue;
+        // Look up the original poll from our in-memory store
+        const pollStore = global.getStoredMessage(pollMsgKey.remoteJid, pollMsgKey.id);
+        if (!pollStore?.message?.pollCreationMessage) {
+          console.log('[poll-handler] Poll message not in store yet — key:', pollMsgKey.id);
+          continue;
+        }
 
         const pollName = pollStore.message.pollCreationMessage.name || "";
-        if (!pollName.includes("Zoro Menu")) continue; // Only react to our menu polls
+        if (!pollName.includes("Zoro Menu")) continue; // Only our menu polls
 
-        // Decode the selected option
-        const votes = pollUpdate.vote?.selectedOptions;
-        if (!votes || votes.length === 0) continue;
-
-        // Votes are SHA256 hashes of option names — match them
+        // Decode voted option (WhatsApp sends SHA256 hashes of option names)
         const crypto = require('crypto');
-        const options = pollStore.message.pollCreationMessage.options;
+        const options = pollStore.message.pollCreationMessage.options || [];
+        const votes = pollUpdate.vote?.selectedOptions || [];
+        if (votes.length === 0) continue;
+
         let selectedOption = null;
         for (const opt of options) {
           const hash = crypto.createHash('sha256').update(opt.optionName).digest();
-          if (votes.some(v => Buffer.isBuffer(v) ? v.equals(hash) : Buffer.from(v).equals(hash))) {
-            selectedOption = opt.optionName;
-            break;
-          }
+          const matched = votes.some(v => {
+            const buf = Buffer.isBuffer(v) ? v : Buffer.from(v, 'base64');
+            return buf.equals(hash);
+          });
+          if (matched) { selectedOption = opt.optionName; break; }
         }
 
-        if (!selectedOption) continue;
+        if (!selectedOption) {
+          console.log('[poll-handler] Could not match voted option hash. votes:', votes.length, 'options:', options.map(o => o.optionName));
+          continue;
+        }
 
         const categoryMap = {
           "👥 Group Admin": "group",
@@ -343,17 +383,18 @@ async function Primon() {
         const chatId = message.key.remoteJid;
         const userId = message.key.participant || message.key.remoteJid;
         const isSudo = message.key.fromMe || global.isSudo(userId);
-
-        // Build a fake msg-like object for buildCategoryText
         const fakeMsg = { key: { remoteJid: chatId, participant: userId, fromMe: message.key.fromMe } };
 
-        if (typeof global.buildCategoryText !== 'function') continue;
-        const menuText = global.buildCategoryText(category, global.commands, fakeMsg, sock, isSudo);
+        if (typeof global.buildCategoryText !== 'function') {
+          await global.reportError('poll-handler', new Error('buildCategoryText not loaded yet'));
+          continue;
+        }
 
+        const menuText = global.buildCategoryText(category, global.commands, fakeMsg, sock, isSudo);
         await sock.sendMessage(chatId, { text: menuText }, { quoted: message });
 
       } catch (pollErr) {
-        console.error('[poll-handler] Error:', pollErr.message);
+        await global.reportError('poll-handler', pollErr);
       }
     }
   });
