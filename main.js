@@ -295,6 +295,69 @@ async function Primon() {
     }
   })
 
+  // ── Poll vote handler for interactive menu ────────────────────────────────
+  sock.ev.on('messages.upsert', async ({ messages }) => {
+    for (const message of messages) {
+      try {
+        if (!message.message?.pollUpdateMessage) continue;
+
+        const pollUpdate = message.message.pollUpdateMessage;
+        const pollMsgKey = pollUpdate.pollCreationMessageKey;
+        if (!pollMsgKey) continue;
+
+        // Fetch the original poll message to read option names
+        const pollStore = await sock.loadMessage(pollMsgKey.remoteJid, pollMsgKey.id).catch(() => null);
+        if (!pollStore?.message?.pollCreationMessage) continue;
+
+        const pollName = pollStore.message.pollCreationMessage.name || "";
+        if (!pollName.includes("Zoro Menu")) continue; // Only react to our menu polls
+
+        // Decode the selected option
+        const votes = pollUpdate.vote?.selectedOptions;
+        if (!votes || votes.length === 0) continue;
+
+        // Votes are SHA256 hashes of option names — match them
+        const crypto = require('crypto');
+        const options = pollStore.message.pollCreationMessage.options;
+        let selectedOption = null;
+        for (const opt of options) {
+          const hash = crypto.createHash('sha256').update(opt.optionName).digest();
+          if (votes.some(v => Buffer.isBuffer(v) ? v.equals(hash) : Buffer.from(v).equals(hash))) {
+            selectedOption = opt.optionName;
+            break;
+          }
+        }
+
+        if (!selectedOption) continue;
+
+        const categoryMap = {
+          "👥 Group Admin": "group",
+          "📥 Downloaders": "download",
+          "⚙️ Owner / Sudo": "owner",
+          "📜 All Commands": "all"
+        };
+
+        const category = categoryMap[selectedOption];
+        if (!category) continue;
+
+        const chatId = message.key.remoteJid;
+        const userId = message.key.participant || message.key.remoteJid;
+        const isSudo = message.key.fromMe || global.isSudo(userId);
+
+        // Build a fake msg-like object for buildCategoryText
+        const fakeMsg = { key: { remoteJid: chatId, participant: userId, fromMe: message.key.fromMe } };
+
+        if (typeof global.buildCategoryText !== 'function') continue;
+        const menuText = global.buildCategoryText(category, global.commands, fakeMsg, sock, isSudo);
+
+        await sock.sendMessage(chatId, { text: menuText }, { quoted: message });
+
+      } catch (pollErr) {
+        console.error('[poll-handler] Error:', pollErr.message);
+      }
+    }
+  });
+
   sock.ev.on('creds.update', saveCreds)
 
   loadModules(__dirname + "/modules");
