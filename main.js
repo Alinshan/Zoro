@@ -357,22 +357,33 @@ global.downloadMedia = async (message, type, filepath) => {
  * @returns {Promise<boolean>} - Returns true if the bot is an admin, otherwise false.
  */
 
+function normalizeJid(jid) {
+  if (!jid) return '';
+  const parts = jid.split('@');
+  if (parts.length < 2) return jid;
+  const user = parts[0].split(':')[0];
+  const domain = parts[1];
+  return `${user}@${domain}`;
+}
+
 global.checkAdmin = async function (msg, sock, groupId, number = false) {
   try {
     const groupMetadata = await sock.groupMetadata(groupId);
     let target = number ? number : sock.user.id;
-    const targetRaw = target.split(':')[0].split('@')[0];
-    console.log(`[checkAdmin] Checking targetRaw: ${targetRaw} in group: ${groupId}`);
-    const isAdmin = groupMetadata.participants.some(participant => {
-      const pRaw = participant.id.split(':')[0].split('@')[0];
-      const match = pRaw === targetRaw && (participant.admin === 'admin' || participant.admin === 'superadmin');
+    const targetNormalized = normalizeJid(target);
+    const targetLidNormalized = (!number && sock.user.lid) ? normalizeJid(sock.user.lid) : null;
+    
+    console.log(`[checkAdmin] Checking target: ${targetNormalized} (LID: ${targetLidNormalized}) in group: ${groupId}`);
+    
+    return groupMetadata.participants.some(participant => {
+      const pNormalized = normalizeJid(participant.id);
+      const match = (pNormalized === targetNormalized || (targetLidNormalized && pNormalized === targetLidNormalized)) && 
+                    (participant.admin === 'admin' || participant.admin === 'superadmin');
       if (match) {
         console.log(`[checkAdmin] Match found: participant ${participant.id} is admin role: ${participant.admin}`);
       }
       return match;
     });
-    console.log(`[checkAdmin] Result for targetRaw ${targetRaw}: ${isAdmin}`);
-    return isAdmin;
   } catch (error) {
     console.error("An error occurred while checking admin status: ", error);
     return false;
@@ -387,8 +398,8 @@ global.getAdmins = async function (groupId) {
     // Add custom helper function to the returned array so .includes works robustly
     admins.includes = function(jid) {
       if (!jid) return false;
-      const targetRaw = jid.split(':')[0].split('@')[0];
-      return this.some(a => a.split(':')[0].split('@')[0] === targetRaw);
+      const targetNormalized = normalizeJid(jid);
+      return this.some(a => normalizeJid(a) === targetNormalized);
     };
     
     return admins;
@@ -399,6 +410,47 @@ global.getAdmins = async function (groupId) {
     return emptyArray;
   }
 };
+
+global.getAdminDiagnostics = async function (sock, groupId, senderJid) {
+  try {
+    const groupMetadata = await sock.groupMetadata(groupId);
+    const botPn = sock.user.id;
+    const botLid = sock.user.lid || 'None';
+    
+    let diag = `*📊 Zoro Admin Diagnostic Report*\n\n`;
+    diag += `*🤖 Bot Identifiers:*\n`;
+    diag += `• Phone JID: \`${botPn}\`\n`;
+    diag += `• LID JID: \`${botLid}\`\n\n`;
+    
+    diag += `*👤 Sender Identifiers:*\n`;
+    diag += `• Sender JID: \`${senderJid}\`\n\n`;
+    
+    diag += `*👥 Group Participants List:*\n`;
+    const participants = groupMetadata.participants;
+    if (participants.length === 0) {
+      diag += `• _No participants found in group metadata!_\n`;
+    } else {
+      participants.forEach(p => {
+        if (p.admin === 'admin' || p.admin === 'superadmin') {
+          diag += `• JID: \`${p.id}\` (Role: *${p.admin}*)\n`;
+        } else {
+          // Only list non-admins if they match the bot or sender JIDs to keep text short
+          const pNorm = normalizeJid(p.id);
+          const isBot = pNorm === normalizeJid(botPn) || (botLid && pNorm === normalizeJid(botLid));
+          const isSender = pNorm === normalizeJid(senderJid);
+          if (isBot || isSender) {
+            diag += `• JID: \`${p.id}\` (Role: _Member_)\n`;
+          }
+        }
+      });
+    }
+    
+    return diag;
+  } catch (error) {
+    return `❌ Diagnostic failed: ${error.message}`;
+  }
+};
+
 /**
  * Downloads the contents of the given URL as an arraybuffer.
  *
