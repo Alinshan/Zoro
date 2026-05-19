@@ -1,5 +1,4 @@
 const fs = require('fs');
-const { generateWAMessageFromContent, proto } = require('@whiskeysockets/baileys');
 
 /**
  * Updates the position of a user in a group.
