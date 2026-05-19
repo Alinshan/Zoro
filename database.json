@@ -1,0 +1,141 @@
+{
+  "handlers": [
+    ".",
+    "/",
+    "!"
+  ],
+  "version": "0.6.6",
+  "filters": [],
+  "aliveMessage": {
+    "type": "text",
+    "media": "",
+    "content": "I'm alive!"
+  },
+  "welcomeMessage": [],
+  "goodbyeMessage": [],
+  "sudo": [],
+  "worktype": "public",
+  "globalMutes": [],
+  "blacklist": [],
+  "plugins": [
+    {
+      "name": "Thena Image Generation",
+      "version": "1.0.8",
+      "description": "Generate images using Thena API",
+      "author": "Alinshan",
+      "id": "image-generation",
+      "path": "./modules/image_gen.js"
+    },
+    {
+      "name": "Blackjack",
+      "version": "1.0.3",
+      "description": "A simple blackjack game",
+      "author": "Alinshan",
+      "id": "blackjack",
+      "path": "./modules/blackjack.js"
+    },
+    {
+      "name": "ChatGPT",
+      "version": "1.1.3",
+      "description": "Start a ChatGPT (o3) session!",
+      "author": "Alinshan",
+      "id": "o3gpt",
+      "path": "./modules/o3session.js"
+    },
+    {
+      "name": "QuotLy",
+      "version": "1.1.4",
+      "description": "Generate stickers from text!",
+      "author": "Alinshan",
+      "id": "quotly",
+      "path": "./modules/quotely.js"
+    },
+    {
+      "name": "Minterpolate",
+      "version": "1.0.4",
+      "description": "Interpolate videos. Make vidoes more smooth as 60FPS!",
+      "author": "Alinshan",
+      "id": "minterpolate",
+      "path": "./modules/minterpolate.js"
+    },
+    {
+      "name": "Super SlowMo",
+      "version": "1.0.0",
+      "description": "Make videos 240FPS slow motion.",
+      "author": "Alinshan",
+      "id": "slowmo",
+      "path": "./modules/super_slowmo.js"
+    },
+    {
+      "name": "Game Benchmarker",
+      "version": "1.0.0",
+      "description": "Get the average FPS of a game on your system.",
+      "author": "Alinshan",
+      "id": "gamefps",
+      "path": "./modules/game_sys_req.js"
+    },
+    {
+      "name": "IMDB Search",
+      "version": "1.0.1",
+      "description": "Searches for a movie on IMDb.",
+      "author": "Alinshan",
+      "id": "imdb",
+      "path": "./modules/imdb.js"
+    },
+    {
+      "name": "Screenshot",
+      "version": "1.0.2",
+      "description": "Take a screenshot of a website.",
+      "author": "Alinshan",
+      "id": "screenshot",
+      "path": "./modules/screenshot.js"
+    },
+    {
+      "name": "Wallpaper Search",
+      "version": "1.0.0",
+      "description": "Search for a wallpaper on the internet.",
+      "author": "Alinshan",
+      "id": "wallpaper",
+      "path": "./modules/wallpaper.js"
+    },
+    {
+      "name": "URL Shortener",
+      "version": "1.0.0",
+      "description": "A simple URL shortener.",
+      "author": "Alinshan",
+      "id": "shorten",
+      "path": "./modules/shorten.js"
+    },
+    {
+      "name": "This X Does Not Exist",
+      "version": "1.0.0",
+      "description": "An implementation of the This X Does Not Exist.",
+      "author": "Alinshan",
+      "id": "thisx",
+      "path": "./modules/thisx.js"
+    },
+    {
+      "name": "Dicebear Avatars",
+      "version": "1.0.0",
+      "description": "Generate a dicebear avatar.",
+      "author": "Alinshan",
+      "id": "dicebear",
+      "path": "./modules/dicebear.js"
+    },
+    {
+      "name": "ATTP",
+      "version": "1.0.1",
+      "description": "Generate a animated sticker from text.",
+      "author": "Alinshan",
+      "id": "attp",
+      "path": "./modules/attp.js"
+    }
+  ],
+  "afkMessage": {
+    "type": "text",
+    "media": "",
+    "content": "_I'am currently AFK! Please contact me later._",
+    "active": false
+  },
+  "users": {}
+}
