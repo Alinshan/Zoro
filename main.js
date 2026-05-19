@@ -360,11 +360,12 @@ global.downloadMedia = async (message, type, filepath) => {
 global.checkAdmin = async function (msg, sock, groupId, number = false) {
   try {
     const groupMetadata = await sock.groupMetadata(groupId);
-    let Number = number ? number : sock.user.id;
-    Number = Number.split(':')[0].split('@')[0] + "@s.whatsapp.net";
-    return groupMetadata.participants.some(participant =>
-      participant.id === Number && participant.admin
-    );
+    let target = number ? number : sock.user.id;
+    const targetRaw = target.split(':')[0].split('@')[0];
+    return groupMetadata.participants.some(participant => {
+      const pRaw = participant.id.split(':')[0].split('@')[0];
+      return pRaw === targetRaw && (participant.admin === 'admin' || participant.admin === 'superadmin');
+    });
   } catch (error) {
     console.error("An error occurred while checking admin status: ", error);
     return false;
@@ -375,10 +376,20 @@ global.getAdmins = async function (groupId) {
   try {
     const groupMetadata = await sock.groupMetadata(groupId);
     const admins = groupMetadata.participants.filter(p => p.admin === 'admin' || p.admin === 'superadmin').map(p => p.id);
-    return admins
+    
+    // Add custom helper function to the returned array so .includes works robustly
+    admins.includes = function(jid) {
+      if (!jid) return false;
+      const targetRaw = jid.split(':')[0].split('@')[0];
+      return this.some(a => a.split(':')[0].split('@')[0] === targetRaw);
+    };
+    
+    return admins;
   } catch (error) {
     console.error("An error occurred while getting admin list: ", error);
-    return [];
+    const emptyArray = [];
+    emptyArray.includes = () => false;
+    return emptyArray;
   }
 };
 /**
