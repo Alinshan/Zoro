@@ -362,10 +362,17 @@ global.checkAdmin = async function (msg, sock, groupId, number = false) {
     const groupMetadata = await sock.groupMetadata(groupId);
     let target = number ? number : sock.user.id;
     const targetRaw = target.split(':')[0].split('@')[0];
-    return groupMetadata.participants.some(participant => {
+    console.log(`[checkAdmin] Checking targetRaw: ${targetRaw} in group: ${groupId}`);
+    const isAdmin = groupMetadata.participants.some(participant => {
       const pRaw = participant.id.split(':')[0].split('@')[0];
-      return pRaw === targetRaw && (participant.admin === 'admin' || participant.admin === 'superadmin');
+      const match = pRaw === targetRaw && (participant.admin === 'admin' || participant.admin === 'superadmin');
+      if (match) {
+        console.log(`[checkAdmin] Match found: participant ${participant.id} is admin role: ${participant.admin}`);
+      }
+      return match;
     });
+    console.log(`[checkAdmin] Result for targetRaw ${targetRaw}: ${isAdmin}`);
+    return isAdmin;
   } catch (error) {
     console.error("An error occurred while checking admin status: ", error);
     return false;
