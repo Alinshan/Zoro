@@ -1,4 +1,4 @@
-const fs = require('fs');
+const { generateWAMessageFromContent, proto } = require('@whiskeysockets/baileys');
 
 /**
  * Handles the "menu" command, which allows users to view a list of available commands and their descriptions.
@@ -57,16 +57,34 @@ addCommand( {pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: tru
         ];
 
         try {
-            await sock.sendMessage(grupId, {
-                interactiveMessage: {
-                    header: { title: title, hasMediaAttachment: false },
-                    body: { text: bodyText },
-                    footer: { text: footerText },
-                    nativeFlowMessage: {
-                        buttons: buttons
+            const interactiveMsg = {
+                viewOnceMessage: {
+                    message: {
+                        messageContextInfo: {
+                            deviceListMetadata: {},
+                            deviceListMetadataVersion: 2
+                        },
+                        interactiveMessage: proto.Message.InteractiveMessage.create({
+                            body: proto.Message.InteractiveMessage.Body.create({
+                                text: bodyText
+                            }),
+                            footer: proto.Message.InteractiveMessage.Footer.create({
+                                text: footerText
+                            }),
+                            header: proto.Message.InteractiveMessage.Header.create({
+                                title: title,
+                                hasMediaAttachment: false
+                            }),
+                            nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                                buttons: buttons
+                            })
+                        })
                     }
                 }
-            }, { quoted: rawMessage.messages[0] });
+            };
+
+            const msgToPrep = generateWAMessageFromContent(grupId, interactiveMsg, { quoted: rawMessage.messages[0] });
+            await sock.relayMessage(grupId, msgToPrep.message, { messageId: msgToPrep.key.id });
             return;
         } catch (err) {
             console.error("Failed to send interactive message: ", err);

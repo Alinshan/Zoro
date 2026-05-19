@@ -1,3 +1,6 @@
+const fs = require('fs');
+const { generateWAMessageFromContent, proto } = require('@whiskeysockets/baileys');
+
 /**
  * Updates the position of a user in a group.
  * @param {object} sock - The WhatsApp socket connection.
@@ -503,16 +506,34 @@ addCommand({pattern: "^gpp ?(.*)", desc:"Allows you to change the group icon/pro
                 }
             ];
 
-            await sock.sendMessage(groupId, {
-                interactiveMessage: {
-                    header: { title: title, hasMediaAttachment: false },
-                    body: { text: body },
-                    footer: { text: footer },
-                    nativeFlowMessage: {
-                        buttons: buttons
+            const interactiveMsg = {
+                viewOnceMessage: {
+                    message: {
+                        messageContextInfo: {
+                            deviceListMetadata: {},
+                            deviceListMetadataVersion: 2
+                        },
+                        interactiveMessage: proto.Message.InteractiveMessage.create({
+                            body: proto.Message.InteractiveMessage.Body.create({
+                                text: body
+                            }),
+                            footer: proto.Message.InteractiveMessage.Footer.create({
+                                text: footer
+                            }),
+                            header: proto.Message.InteractiveMessage.Header.create({
+                                title: title,
+                                hasMediaAttachment: false
+                            }),
+                            nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                                buttons: buttons
+                            })
+                        })
                     }
                 }
-            }, { quoted: rawMessage.messages[0] });
+            };
+
+            const msgToPrep = generateWAMessageFromContent(groupId, interactiveMsg, { quoted: rawMessage.messages[0] });
+            await sock.relayMessage(groupId, msgToPrep.message, { messageId: msgToPrep.key.id });
             return;
         } else if (msg.message?.imageMessage) {
             await global.downloadMedia(msg.message.imageMessage, "image", tempFile);
@@ -537,16 +558,34 @@ addCommand({pattern: "^gpp ?(.*)", desc:"Allows you to change the group icon/pro
                 }
             ];
 
-            await sock.sendMessage(groupId, {
-                interactiveMessage: {
-                    header: { title: title, hasMediaAttachment: false },
-                    body: { text: body },
-                    footer: { text: footer },
-                    nativeFlowMessage: {
-                        buttons: buttons
+            const interactiveMsg = {
+                viewOnceMessage: {
+                    message: {
+                        messageContextInfo: {
+                            deviceListMetadata: {},
+                            deviceListMetadataVersion: 2
+                        },
+                        interactiveMessage: proto.Message.InteractiveMessage.create({
+                            body: proto.Message.InteractiveMessage.Body.create({
+                                text: body
+                            }),
+                            footer: proto.Message.InteractiveMessage.Footer.create({
+                                text: footer
+                            }),
+                            header: proto.Message.InteractiveMessage.Header.create({
+                                title: title,
+                                hasMediaAttachment: false
+                            }),
+                            nativeFlowMessage: proto.Message.InteractiveMessage.NativeFlowMessage.create({
+                                buttons: buttons
+                            })
+                        })
                     }
                 }
-            }, { quoted: rawMessage.messages[0] });
+            };
+
+            const msgToPrep = generateWAMessageFromContent(groupId, interactiveMsg, { quoted: rawMessage.messages[0] });
+            await sock.relayMessage(groupId, msgToPrep.message, { messageId: msgToPrep.key.id });
             return;
         } else {
             const responseText = "_❌ Please reply to an image or upload an image with the command!_";
