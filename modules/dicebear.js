@@ -37,6 +37,7 @@ addCommand({ pattern: "^avatar$", access: "all", desc: "_Get a random avatar fro
     fs.writeFileSync(mediaPath, response.data);
 
     ffmpeg(mediaPath).outputOptions(["-y", "-vcodec libwebp"]).videoFilters('scale=1500:1500:flags=lanczos:force_original_aspect_ratio=decrease,format=rgba,pad=2000:2000:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1').save(mediaPath2).on('end', async () => {
+        await global.addExif(mediaPath2, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
         await sock.sendMessage(groupId, { delete: msg.fromMe ? publicMessage.key : msg.key });
         await sock.sendMessage(groupId, { sticker: { url: mediaPath2 } });
         try {

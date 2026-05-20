@@ -337,6 +337,7 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
             const imagePath2 = "./src/quote" + Math.floor(Math.random() * 10000) + ".webp";
             fs.writeFileSync(imagePath, generateQuote.data.result.image, 'base64');
             ffmpeg(imagePath).outputOptions(["-y", "-vcodec libwebp"]).videoFilters('scale=2000:2000:flags=lanczos:force_original_aspect_ratio=decrease,format=rgba,pad=2000:2000:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1').save(imagePath2).on('end', async () => {
+                await global.addExif(imagePath2, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
                 if (msg.key.fromMe) {
                     await sock.sendMessage(msg.key.remoteJid, { delete: msg.key });
                     await sock.sendMessage(msg.key.remoteJid, { sticker: { url: imagePath2 } });

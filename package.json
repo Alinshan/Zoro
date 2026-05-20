@@ -24,6 +24,7 @@
     "instagram-url-direct": "^2.0.7",
     "libmuse": "^0.1.1",
     "mongodb": "^7.2.0",
+    "node-webpmux": "^3.2.1",
     "pino": "^9.6.0",
     "qrcode": "^1.5.4",
     "qrcode-terminal": "latest",

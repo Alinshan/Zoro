@@ -69,6 +69,7 @@ addCommand({ pattern: "^sticker$", access: "all", desc: "_Convert an media to a 
         const imagePath2 = "./src/sticker" + Math.floor(Math.random() * 10000) + ".webp";
         await global.downloadMedia(msg.quotedMessage.imageMessage, "image", imagePath);
         ffmpeg(imagePath).outputOptions(["-y", "-vcodec libwebp"]).videoFilters('scale=2000:2000:flags=lanczos:force_original_aspect_ratio=decrease,format=rgba,pad=2000:2000:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1').save(imagePath2).on('end', async () => {
+            await global.addExif(imagePath2, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
             if (msg.key.fromMe) {
                 await sock.sendMessage(msg.key.remoteJid, { text: "_✅ Done!_", edit: msg.key });
                 await sock.sendMessage(msg.key.remoteJid, { sticker: { url: imagePath2 } });
@@ -88,6 +89,7 @@ addCommand({ pattern: "^sticker$", access: "all", desc: "_Convert an media to a 
             const imagePath2 = "./src/sticker" + Math.floor(Math.random() * 10000) + ".webp";
             await global.downloadMedia(viewOnceMessage.imageMessage, "image", imagePath);
             ffmpeg(imagePath).outputOptions(["-y", "-vcodec libwebp"]).videoFilters('scale=2000:2000:flags=lanczos:force_original_aspect_ratio=decrease,format=rgba,pad=2000:2000:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1').save(imagePath2).on('end', async () => {
+                await global.addExif(imagePath2, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
                 if (msg.key.fromMe) {
                     await sock.sendMessage(msg.key.remoteJid, { text: "_✅ Done!_", edit: msg.key });
                     await sock.sendMessage(msg.key.remoteJid, { sticker: { url: imagePath2 } });
@@ -146,6 +148,7 @@ addCommand({ pattern: "^sticker$", access: "all", desc: "_Convert an media to a 
         } else {
             const stickerPath = "./src/sticker" + Math.floor(Math.random() * 100) + ".webp";
             await global.downloadMedia(msg.quotedMessage.stickerMessage, "sticker", stickerPath);
+            await global.addExif(stickerPath, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
             if (msg.key.fromMe) {
                 await sock.sendMessage(msg.key.remoteJid, { text: "_✅ Done!_", edit: msg.key });
                 await sock.sendMessage(msg.key.remoteJid, { image: { url: stickerPath } });
@@ -180,6 +183,7 @@ addCommand({ pattern: "^sticker$", access: "all", desc: "_Convert an media to a 
             "0"
         ])
             .toFormat("webp").save(vpth).on('end', async () => {
+                await global.addExif(vpth, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
                 if (msg.key.fromMe) {
                     await sock.sendMessage(msg.key.remoteJid, { text: "_✅ Done!_", edit: msg.key });
                     await sock.sendMessage(msg.key.remoteJid, { sticker: { url: vpth, isAnimated: true } }, { isAnimated: true });

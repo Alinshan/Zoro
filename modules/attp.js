@@ -144,6 +144,7 @@ ${textNodes}
       const inputPat = path.join(__dirname, '..', 'src', `frame_${randId}_%d.png`);
       const cmd = `"${ffmpegPath}" -y -framerate 10 -i "${inputPat}" -vcodec libwebp -loop 0 -pix_fmt bgra -s ${CANVAS}x${CANVAS} "${stickerPath}"`;
       execSync(cmd, { stdio: 'ignore' });
+      await global.addExif(stickerPath, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
 
       // Delete loading message
       try { await sock.sendMessage(msg.key.remoteJid, { delete: dKey.key }); } catch {}

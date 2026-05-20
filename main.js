@@ -365,6 +365,28 @@ global.downloadMedia = async (message, type, filepath) => {
   const writeStream = fs.createWriteStream(filepath);
   const { pipeline } = require("stream/promises");
   await pipeline(stream, writeStream);
+};
+
+global.addExif = async function(webpPath, packname, author) {
+  try {
+      const webp = require('node-webpmux');
+      const img = new webp.Image();
+      await img.load(webpPath);
+      const json = {
+          "sticker-pack-id": "zoro-bot-" + Date.now(),
+          "sticker-pack-name": packname,
+          "sticker-pack-publisher": author,
+          "emojis": ["⚔️"]
+      };
+      const exifAttr = Buffer.from([0x49, 0x49, 0x2A, 0x00, 0x08, 0x00, 0x00, 0x00, 0x01, 0x00, 0x41, 0x57, 0x07, 0x00, 0x00, 0x00, 0x00, 0x00, 0x16, 0x00, 0x00, 0x00]);
+      const jsonBuff = Buffer.from(JSON.stringify(json), "utf-8");
+      const exif = Buffer.concat([exifAttr, jsonBuff]);
+      exif.writeUIntLE(jsonBuff.length, 14, 4);
+      img.exif = exif;
+      await img.save(webpPath);
+  } catch (e) {
+      console.error("Error adding EXIF:", e);
+  }
 };/**
  * Checks if the number is an admin in the group.
  *
