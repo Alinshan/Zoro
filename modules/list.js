@@ -74,19 +74,7 @@ addCommand({ pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: tru
     }
 
     if (!inputCommand) {
-        const dashboardText = `⚔️ *ZORO MENU* ⚔️\n\n` +
-                              `💚 *Hello @${userName}!*\n` +
-                              `Welcome to *Zoro* WhatsApp Bot Group.\n\n` +
-                              `*━━━━━━━━━━━━━━━━━━━━━━━━━━*\n` +
-                              `👇 *Reply with a number below to view commands!*\n` +
-                              `*━━━━━━━━━━━━━━━━━━━━━━━━━━*\n\n` +
-                              `1️⃣ 👥 Group Admin\n` +
-                              `2️⃣ 📥 Downloaders\n` +
-                              `3️⃣ ⚙️ Owner / Sudo\n` +
-                              `4️⃣ 📜 All Commands\n\n` +
-                              `_Developer: *Alinshan*_`;
-
-        return await sendReply(dashboardText);
+        inputCommand = "all";
     }
 
     if (["all", "group", "download", "owner"].includes(inputCommand)) {
@@ -164,10 +152,10 @@ addCommand({ pattern: "onMessage", access: "all", dontAddCommandList: true }, as
     const quotedMsg = msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
     if (!quotedMsg) return;
 
-    const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || quotedMsg.imageMessage?.caption || "";
+    const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || quotedMsg.imageMessage?.caption || quotedMsg.videoMessage?.caption || quotedMsg.protocolMessage?.editedMessage?.extendedTextMessage?.text || "";
     if (!quotedText) return;
 
-    if (quotedText.includes("ZORO MENU") || quotedText.includes("RORONOA ZORO MENU") || quotedText.includes("RORONOA ZORO CONSOLE") || quotedText.includes("Zoro Bot Dashboard")) {
+    if (quotedText.includes("ZORO MENU") || quotedText.includes("RORONOA ZORO MENU") || quotedText.includes("RORONOA ZORO CONSOLE") || quotedText.includes("Zoro Bot Dashboard") || quotedText.includes("ZORO CONSOLE")) {
         const categoryMap = { "1": "group", "2": "download", "3": "owner", "4": "all" };
         const category = categoryMap[text];
         const userId = msg.key.participant || msg.key.remoteJid;
