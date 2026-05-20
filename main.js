@@ -38,9 +38,155 @@ Module.prototype.require = function (packageName) {
 let makeWASocket, useMultiFileAuthState, fetchLatestBaileysVersion, downloadContentFromMessage;
 const axios = require('axios');
 const pino = require('pino');
+const express = require('express');
+const QRCode = require('qrcode');
 require('./events');
 var currentVersion = "", versionCheckInterval = 180
 var sock;
+
+// ── Web server for QR code scanning ─────────────────────────────────────────
+let qrDataURL = null;
+let botConnected = false;
+
+const app = express();
+const PORT = process.env.PORT || 3000;
+
+app.get('/', async (req, res) => {
+  const connectedHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Zoro Bot — Connected</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff;
+           display: flex; flex-direction: column; align-items: center;
+           justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { background: #111; border: 1px solid #1f1f1f; border-radius: 20px;
+            padding: 48px 40px; text-align: center; max-width: 480px; width: 100%;
+            box-shadow: 0 0 60px rgba(34,197,94,0.15); }
+    .logo { font-size: 52px; margin-bottom: 12px; animation: pulse 2s infinite; }
+    @keyframes pulse { 0%,100%{transform:scale(1)} 50%{transform:scale(1.1)} }
+    h1 { font-size: 28px; font-weight: 900; letter-spacing: -0.5px;
+         background: linear-gradient(135deg,#22c55e,#16a34a); -webkit-background-clip:text;
+         -webkit-text-fill-color:transparent; margin-bottom: 8px; }
+    p { color: #6b7280; font-size: 15px; line-height: 1.6; margin-top: 10px; }
+    .badge { display:inline-block; background:#052e16; color:#22c55e; font-size:13px;
+             font-weight:600; padding:6px 16px; border-radius:999px; margin-top:20px;
+             border:1px solid #166534; }
+    .footer { color:#374151; font-size:12px; margin-top:28px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">⚔️</div>
+    <h1>Zoro is Online!</h1>
+    <p>The bot is connected and running. You can now use all commands in your WhatsApp groups.</p>
+    <div class="badge">✅ Connected &amp; Running</div>
+    <p class="footer">Zoro WhatsApp Bot &mdash; Built by Alinshan</p>
+  </div>
+</body>
+</html>`;
+
+  const qrHTML = (qr) => `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="refresh" content="30" />
+  <title>Zoro Bot — Scan QR</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;900&display=swap" rel="stylesheet" />
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body { font-family: 'Inter', sans-serif; background: #0a0a0a; color: #fff;
+           display: flex; flex-direction: column; align-items: center;
+           justify-content: center; min-height: 100vh; padding: 20px; }
+    .card { background: #111; border: 1px solid #1f1f1f; border-radius: 20px;
+            padding: 40px 36px; text-align: center; max-width: 440px; width: 100%;
+            box-shadow: 0 0 60px rgba(34,197,94,0.12); }
+    .logo { font-size: 44px; margin-bottom: 10px; }
+    h1 { font-size: 26px; font-weight: 900; letter-spacing: -0.5px;
+         background: linear-gradient(135deg,#22c55e,#16a34a); -webkit-background-clip:text;
+         -webkit-text-fill-color:transparent; margin-bottom: 6px; }
+    .subtitle { color: #6b7280; font-size: 14px; margin-bottom: 24px; }
+    .qr-wrap { background: #fff; border-radius: 16px; padding: 16px; display: inline-block; }
+    .qr-wrap img { display: block; width: 240px; height: 240px; }
+    .steps { text-align: left; margin-top: 28px; }
+    .step { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+    .step-num { background: #052e16; color: #22c55e; border: 1px solid #166534;
+                border-radius: 50%; width: 26px; height: 26px; min-width: 26px;
+                display: flex; align-items: center; justify-content: center;
+                font-size: 12px; font-weight: 700; }
+    .step-text { color: #9ca3af; font-size: 13px; line-height: 1.5; padding-top: 4px; }
+    .refresh-note { color: #374151; font-size: 12px; margin-top: 20px; }
+    .dot { display: inline-block; width: 8px; height: 8px; background: #22c55e;
+           border-radius: 50%; margin-right: 6px;
+           animation: blink 1.2s ease-in-out infinite; }
+    @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0.2} }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="logo">⚔️</div>
+    <h1>Connect Zoro Bot</h1>
+    <p class="subtitle">Scan the QR code below with WhatsApp to link your number</p>
+    <div class="qr-wrap">
+      <img src="${qr}" alt="WhatsApp QR Code" />
+    </div>
+    <div class="steps">
+      <div class="step"><div class="step-num">1</div><div class="step-text">Open WhatsApp on your phone</div></div>
+      <div class="step"><div class="step-num">2</div><div class="step-text">Tap <strong>⋮ Menu &rarr; Linked Devices &rarr; Link a Device</strong></div></div>
+      <div class="step"><div class="step-num">3</div><div class="step-text">Point your camera at the QR code above</div></div>
+    </div>
+    <p class="refresh-note"><span class="dot"></span>Page auto-refreshes every 30s. QR expires in ~60s.</p>
+  </div>
+</body>
+</html>`;
+
+  const waitingHTML = `
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta http-equiv="refresh" content="5" />
+  <title>Zoro Bot — Starting...</title>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap" rel="stylesheet" />
+  <style>
+    * { margin:0; padding:0; box-sizing:border-box; }
+    body { font-family:'Inter',sans-serif; background:#0a0a0a; color:#fff;
+           display:flex; align-items:center; justify-content:center; min-height:100vh; }
+    .card { background:#111; border:1px solid #1f1f1f; border-radius:20px;
+            padding:48px; text-align:center; max-width:420px; }
+    .spinner { width:48px; height:48px; border:4px solid #1f2d1f;
+               border-top-color:#22c55e; border-radius:50%;
+               animation:spin 0.9s linear infinite; margin:0 auto 24px; }
+    @keyframes spin { to { transform:rotate(360deg); } }
+    h1 { font-size:22px; font-weight:700; color:#e5e7eb; margin-bottom:10px; }
+    p  { color:#6b7280; font-size:14px; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <div class="spinner"></div>
+    <h1>Starting Zoro Bot...</h1>
+    <p>Generating QR code, please wait. This page will refresh automatically.</p>
+  </div>
+</body>
+</html>`;
+
+  if (botConnected) return res.send(connectedHTML);
+  if (qrDataURL) return res.send(qrHTML(qrDataURL));
+  return res.send(waitingHTML);
+});
+
+app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
+// ────────────────────────────────────────────────────────────────────────────
 
 
 setInterval(async () => {
@@ -148,21 +294,35 @@ async function Primon() {
   });
 
   sock.ev.on('connection.update', async (update) => {
-    const { connection, lastDisconnect } = update;
+    const { connection, lastDisconnect, qr } = update;
+
+    // Capture QR code and convert to data URL for the web page
+    if (qr) {
+      try {
+        qrDataURL = await QRCode.toDataURL(qr, { width: 480, margin: 2 });
+        botConnected = false;
+        console.log(`🔗 QR ready — scan at http://localhost:${PORT}`);
+      } catch (e) { console.error('QR generation error:', e); }
+    }
+
     if (connection === 'close') {
-      const shouldReconnect = (lastDisconnect.error.output.statusCode !== 401);
+      qrDataURL = null;
+      botConnected = false;
+      const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== 401);
       if (shouldReconnect) {
         console.log('Disconnected, reconnecting...');
         Primon();
       } else {
-        console.log('QR code was not scanned.');
+        console.log('Session ended — please rescan the QR code.');
       }
     } else if (connection === 'open') {
+      qrDataURL = null;
+      botConnected = true;
       console.log('The connection is opened.');
       const usrId = sock.user.id;
       const mappedId = usrId.split(':')[0].split('@')[0] + `@s.whatsapp.net`;
       if (!global.similarity) global.similarity = await import('string-similarity-js');
-      await sock.sendMessage(mappedId, { text: "_Zoro Online!_\n\n_Use_ ```" + global.handlers[0] + "menu``` _to see the list of commands._" });;
+      await sock.sendMessage(mappedId, { text: "_Zoro Online!_\n\n_Use_ ```" + global.handlers[0] + "menu``` _to see the list of commands._" });
     }
   });
 
