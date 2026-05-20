@@ -374,7 +374,7 @@ global.addExif = async function(webpPath, packname, author) {
       await img.load(webpPath);
       const json = {
           "sticker-pack-id": "zoro-bot-" + Date.now(),
-          "sticker-pack-name": packname,
+          "sticker-pack-name": "",
           "sticker-pack-publisher": author,
           "emojis": ["⚔️"]
       };
