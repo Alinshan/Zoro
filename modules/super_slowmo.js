@@ -124,10 +124,8 @@ addCommand({ pattern: "^slowmo ?(.*)", access: "all", desc: "_Make videos 240FPS
         var modeName = mode == "normal" ? "Normal" : mode == "fast" ? "Fast" : "Quality"
 
         if (msg.key.fromMe) {
-            try { await sock.sendMessage(msg.key.remoteJid, { delete: msg.key }); } catch {}
             await sock.sendMessage(msg.key.remoteJid, { video: { url: slowPatch2 }, caption: "_Slow motion applied! (" + modeName + " Mode)_" });
         } else {
-            try { await sock.sendMessage(msg.key.remoteJid, { delete: publicMessage.key }); } catch {}
             await sock.sendMessage(msg.key.remoteJid, { video: { url: slowPatch2 }, caption: "_Slow motion applied! (" + modeName + " Mode)_" }, { quoted: rawMessage.messages[0] });
         }
 

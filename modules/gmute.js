@@ -31,7 +31,6 @@ addCommand({pattern: "^gmute$", desc: "Mutes a user from sending messages in the
         if (msg.key.fromMe) {
             return await sock.sendMessage(groupId, {text: "_❌ Sorry, I am not an admin in this group!_", edit: msg.key})
         } else {
-            await sock.sendMessage(groupId, { delete: publicMessage.key });
             return await sock.sendMessage(groupId, {text: "_❌ Sorry, I am not an admin in this group!_"}, { quoted: rawMessage.messages[0] })
         }
     };
@@ -99,7 +98,6 @@ addCommand({pattern: "^ungmute$", desc: "Unmutes a user from sending messages in
         if (msg.key.fromMe) {
             return await sock.sendMessage(groupId, {text: "_❌ Sorry, I am not an admin in this group!_", edit: msg.key})
         } else {
-            await sock.sendMessage(groupId, { delete: publicMessage.key });
             return await sock.sendMessage(groupId, {text: "_❌ Sorry, I am not an admin in this group!_"}, { quoted: rawMessage.messages[0] })
         }
     };

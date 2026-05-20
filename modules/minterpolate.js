@@ -123,10 +123,8 @@ addCommand({ pattern: "^interp ?(.*)", access: "all", desc: "_Interpolate a vide
         var modeName = mode == "normal" ? "Normal" : mode == "fast" ? "Fast" : "Quality"
 
         if (msg.key.fromMe) {
-            try { await sock.sendMessage(msg.key.remoteJid, { delete: msg.key }); } catch {}
             await sock.sendMessage(msg.key.remoteJid, { video: { url: interpPath2 }, caption: "_Interpolated video to 60FPS! (" + modeName + " Mode)_" });
         } else {
-            try { await sock.sendMessage(msg.key.remoteJid, { delete: publicMessage.key }); } catch {}
             await sock.sendMessage(msg.key.remoteJid, { video: { url: interpPath2 }, caption: "_Interpolated video to 60FPS! (" + modeName + " Mode)_" }, { quoted: rawMessage.messages[0] });
         }
 

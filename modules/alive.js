@@ -38,9 +38,7 @@ addCommand({ pattern: "^alive$", access: "all", desc: "_Check if the bot is aliv
             }, { quoted: rawMessage.messages[0] });
         }
 
-        if (msg.key.fromMe) {
-            try { await sock.sendMessage(grupId, { delete: msg.key }); } catch {}
-        }
+
     } catch (err) {
         console.error("Failed to send alive message: ", err);
         await sock.sendMessage(grupId, { text: consoleText, mentions: [userJid] }, { quoted: rawMessage.messages[0] });

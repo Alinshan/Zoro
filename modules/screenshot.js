@@ -34,10 +34,8 @@ addCommand({ pattern: '^ss ?(.*)', access: 'all', desc: 'Take a screenshot of a 
         var mediaPath = './src/ss' + Math.floor(Math.random() * 20) + '.png';
         fs.writeFileSync(mediaPath, screenshot);
         if (msg.key.fromMe) {
-            await sock.sendMessage(msg.key.remoteJid, { delete: msg.key });
             await sock.sendMessage(msg.key.remoteJid, { image: { url: mediaPath }, caption: '_📸 Screenshot taken!_' });
         } else {
-            await sock.sendMessage(msg.key.remoteJid, { delete: publicMessage.key });
             await sock.sendMessage(msg.key.remoteJid, { image: { url: mediaPath }, caption: '_📸 Screenshot taken!_' });
         }
         try { fs.unlinkSync(mediaPath) } catch {}

@@ -118,7 +118,6 @@ addCommand({ pattern: "^wp ?(.*)", access: "all", desc: "_Get wallpapers of a qu
 
         fs.writeFileSync(mediaPath, image.data);
         var caption = "_🖼️ Wallpaper (" + query + ")_\n" + "_Model ::_ " + model.toUpperCase().replace("-", "") + "\n_Ratio ::_ " + (ratio ? "Mobile" : "Desktop");
-        await sock.sendMessage(msg.key.remoteJid, { delete: msg.key.fromMe ? msg.key : publicMessage.key });
         await sock.sendMessage(msg.key.remoteJid, { image: { url: mediaPath}, caption: caption });
         return mediaPath
     }

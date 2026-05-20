@@ -46,14 +46,12 @@ addCommand({ pattern: "^thisx ?(.*)", access: "all", desc: "_An implementation o
         var person = await thisPersonDoesNotExist();
         var personPath = "./src/this_person_does_not_exist" + Math.floor(Math.random() * 20) + ".png"
         fs.writeFileSync(personPath, person);
-        await sock.sendMessage(msg.key.remoteJid, {delete: msg.key})
         await sock.sendMessage(msg.key.remoteJid, { image: {url: personPath}, caption: "_This person does not exist_" });
         try { fs.unlinkSync(personPath); } catch (err) { }
         return;
     } else if (command == "house") {
         var house = await thisHouseDoesNotExist(housePath);
         ffmpeg(house).outputOptions('-vf', 'crop=in_w:in_h-50').save(housePath2).on('end', async () => {
-            await sock.sendMessage(msg.key.remoteJid, {delete: msg.key})
             await sock.sendMessage(msg.key.remoteJid, { image: {url: housePath2}, caption: "_This house does not exist_" });
             try { fs.unlinkSync(housePath); } catch (err) { }
             try { fs.unlinkSync(housePath2); } catch (err) { }
@@ -62,7 +60,6 @@ addCommand({ pattern: "^thisx ?(.*)", access: "all", desc: "_An implementation o
        
     } else if (command == "word") {
         var word = await thisWordDoesNotExist();
-        await sock.sendMessage(msg.key.remoteJid, {delete: msg.key})
         await sock.sendMessage(msg.key.remoteJid, { text: "_Word:_ *" + word.word + "*\n_Definition:_ *" + word.definition + "*"});
         return;
     } else {

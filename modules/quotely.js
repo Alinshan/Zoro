@@ -339,10 +339,8 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
             ffmpeg(imagePath).outputOptions(["-y", "-vcodec libwebp"]).videoFilters('scale=2000:2000:flags=lanczos:force_original_aspect_ratio=decrease,format=rgba,pad=2000:2000:(ow-iw)/2:(oh-ih)/2:color=#00000000,setsar=1').save(imagePath2).on('end', async () => {
                 await global.addExif(imagePath2, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
                 if (msg.key.fromMe) {
-                    await sock.sendMessage(msg.key.remoteJid, { delete: msg.key });
                     await sock.sendMessage(msg.key.remoteJid, { sticker: { url: imagePath2 } });
                 } else {
-                    await sock.sendMessage(msg.key.remoteJid, { delete: publicMessage.key });
                     await sock.sendMessage(msg.key.remoteJid, { sticker: { url: imagePath2 } }, { quoted: rawMessage.messages[0] });
                 }
                 [imagePath, imagePath2].forEach(file => {
@@ -354,7 +352,6 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
             if (msg.key.fromMe) {
                 return await sock.sendMessage(msg.key.remoteJid, { text: "_❌ Something went wrong!_", edit: msg.key });
             } else {
-                await sock.sendMessage(msg.key.remoteJid, { delete: publicMessage.key });
                 return await sock.sendMessage(msg.key.remoteJid, { text: "_❌ Something went wrong!_" }, { quoted: rawMessage.messages[0] });
             }
         }
@@ -362,7 +359,6 @@ addCommand({ pattern: "^q ?([\\s\\S]*)", access: "all", desc: "_Generate sticker
         if (msg.key.fromMe) {
             return await sock.sendMessage(msg.key.remoteJid, { text: "_❌ Something went wrong!_", edit: msg.key });
         } else {
-            await sock.sendMessage(msg.key.remoteJid, { delete: publicMessage.key });
             return await sock.sendMessage(msg.key.remoteJid, { text: "_❌ Something went wrong!_" }, { quoted: rawMessage.messages[0] });
         }
     }

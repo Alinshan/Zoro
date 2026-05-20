@@ -146,8 +146,7 @@ ${textNodes}
       execSync(cmd, { stdio: 'ignore' });
       await global.addExif(stickerPath, "© ᴢᴏʀᴏ ʙᴏᴛ", "© ᴢᴏʀᴏ ʙᴏᴛ");
 
-      // Delete loading message
-      try { await sock.sendMessage(msg.key.remoteJid, { delete: dKey.key }); } catch {}
+
 
       // Send animated sticker
       await sock.sendMessage(
@@ -158,7 +157,7 @@ ${textNodes}
 
     } catch (err) {
       console.error('[attp] Error:', err.message);
-      try { await sock.sendMessage(msg.key.remoteJid, { delete: dKey.key }); } catch {}
+
       await sock.sendMessage(
         msg.key.remoteJid,
         { text: '❌ _Sticker generation failed. Please try again._' },

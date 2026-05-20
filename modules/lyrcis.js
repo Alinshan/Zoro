@@ -26,10 +26,8 @@ addCommand( {pattern: "^lyrics ?(.*)", access: "all", desc: "_Get lyrics of a so
         const lyrics = await firstSong.lyrics();
     
         if (msg.key.fromMe) {
-            await sock.sendMessage(msg.key.remoteJid, { delete: msg.key });
             await sock.sendMessage(msg.key.remoteJid, { image: { url: imageUrl }, caption: title + "\n\n" + lyrics });
         } else {
-            await sock.sendMessage(msg.key.remoteJid, { delete: publicMessage.key });
             await sock.sendMessage(msg.key.remoteJid, { image: { url: imageUrl }, caption: title + "\n\n" + lyrics }, { quoted: rawMessage.messages[0] });
         }
     

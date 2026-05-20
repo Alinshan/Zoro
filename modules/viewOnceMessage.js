@@ -34,13 +34,11 @@ addCommand({ pattern: "^show$", access: "all", desc: "_It allows you to view the
 
         await global.downloadMedia(configs._0, configs._1, configs._2);
 
-        const deleteMessage = { delete: msg.key.fromMe ? msg.key : sentMessage.key };
         const mediaMessage = { [configs._1]: { url: configs._2 }, caption: `_⏳ Downloaded!_` };
         const sendMediaMessage = msg.key.fromMe 
             ? mediaMessage 
             : { ...mediaMessage, quoted: rawMessage.messages[0] };
 
-        await sock.sendMessage(grupId, deleteMessage);
         await sock.sendMessage(grupId, sendMediaMessage);
 
         if (fs.existsSync(configs._2)) fs.unlinkSync(configs._2);

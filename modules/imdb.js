@@ -122,13 +122,13 @@ addCommand({ pattern: "^imdb ?(.*)$", access: "all", desc: "_Searches for a movi
     fs.writeFileSync(mediaPath, buffer);
 
     if (msg.key.fromMe) {
-        await sock.sendMessage(msg.key.remoteJid, {delete: msg.key});
+
         await sock.sendMessage(msg.key.remoteJid, {
             image: { url: mediaPath },
             caption: "_📽️ Movie Details 📽️_\n\n" + "*Title::* _" + imdbData.title + "_\n*Description::* _" + imdbData.description + "_\n*Rating::* _" + imdbData.rating + "_\n*Director::* _" + imdbData.director + "_\n*Writer::* _" + imdbData.writer + "_\n*Actors::* _" + imdbData.actors.join(", ") + "_\n*Stars::* _" + imdbData.stars.join(", ") + "_\n*Release Date::* _" + imdbData.release_date + "_\n*Length::* _" + imdbData.length + "_\n*URL::* _" + imdbData.url + "_",
         });
     } else {
-        await sock.sendMessage(msg.key.remoteJid, {delete: publicMessage.key});
+
         await sock.sendMessage(msg.key.remoteJid, {
             image: { url: mediaPath },
             caption: "_📽️ Movie Details 📽️_\n\n" + "*Title::* _" + imdbData.title + "_\n*Description::* _" + imdbData.description + "_\n*Rating::* _" + imdbData.rating + "_\n*Director::* _" + imdbData.director + "_\n*Writer::* _" + imdbData.writer + "_\n*Actors::* _" + imdbData.actors.join(", ") + "_\n*Stars::* _" + imdbData.stars.join(", ") + "_\n*Release Date::* _" + imdbData.release_date + "_\n*Length::* _" + imdbData.length + "_\n*URL::* _" + imdbData.url + "_",

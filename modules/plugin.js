@@ -1,7 +1,7 @@
 const axios = require("axios");
 const fs = require("fs");
 
-addCommand({pattern: "^plugin ?(.*)", access: "sudo", desc: "_Seacrh for a plugin in the store. https://Alinshan.github.io/ZoroMarket/_" }, async (msg, match, sock, rawMessage) => {
+addCommand({pattern: "^plugin ?(.*)", access: "sudo", dontAddCommandList: true, desc: "_Seacrh for a plugin in the store. https://Alinshan.github.io/ZoroMarket/_" }, async (msg, match, sock, rawMessage) => {
     const groupId = msg.key.remoteJid;
     const query = match[1];
 
