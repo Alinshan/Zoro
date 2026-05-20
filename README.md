@@ -34,7 +34,7 @@
 
 | Capabilities       | Technical Implementation                                    | Platform Advantage                                     |
 | :----------------- | :---------------------------------------------------------- | :----------------------------------------------------- |
-| 📱 **Dashboard**   | Glassmorphic local web server interface on port `8000`      | Dual-mode QR code and phone number pairing             |
+| 📱 **Dashboard**   | Glassmorphic local web server interface on port `3000`      | Dual-mode QR code and phone number pairing             |
 | 💾 **Persistence** | Persistent session state serialization via MongoDB Atlas    | Zero disconnections, infinite container lifespan      |
 | ⚡ **Streams**     | Multi-instance Cobalt v7 API routing engine                 | 0% CPU & container RAM overhead during downloads       |
 | 🎬 **Graphics**     | Automatic multi-stage FFmpeg conversion pipelines           | 240FPS slow-motion and fluid video interpolation       |
@@ -163,7 +163,7 @@ graph LR
 | **Step 1** | [MongoDB Atlas](https://www.mongodb.com/atlas) | Create a free database cluster & whitelist IP `0.0.0.0/0` | Copy MongoDB URI string |
 | **Step 2** | [Render](https://render.com/) | Link this repository and spin up a new **Web Service** | Set **Runtime** to `Docker` |
 | **Step 3** | [Render Environment](https://dashboard.render.com/) | Add your environment variables in the settings tab | Add `MONGODB_URI` = *copied URI* |
-| **Step 4** | [Web Interface](http://localhost:8000) | Open your Render service URL in a browser tab | Authenticate QR / Phone |
+| **Step 4** | [Web Interface](http://localhost:3000) | Open your Render service URL (or localhost:3000) in a browser tab | Authenticate by scanning the QR code |
 
 ---
 
@@ -185,7 +185,7 @@ npm install
 # 4. Start the bot
 npm start
 ```
-*Access `http://localhost:8000` to link your WhatsApp account. Zoro will automatically spin up on authentication.*
+*Access `http://localhost:3000` in your web browser to scan the QR code and link your WhatsApp account. The session will automatically save to your MongoDB database for future starts.*
 
 ---
 
