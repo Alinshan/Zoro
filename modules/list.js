@@ -74,35 +74,19 @@ addCommand({ pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: tru
     }
 
     if (!inputCommand) {
-        // No category specified → send dashboard text + poll
-        const dashboardText = `⚔️ *RORONOA ZORO MENU* ⚔️\n\n` +
+        const dashboardText = `⚔️ *ZORO MENU* ⚔️\n\n` +
                               `💚 *Hello @${userName}!*\n` +
-                              `Welcome to *Roronoa Zoro* WhatsApp Command Center.\n\n` +
+                              `Welcome to *Zoro* WhatsApp Bot Group.\n\n` +
                               `*━━━━━━━━━━━━━━━━━━━━━━━━━━*\n` +
-                              `👇 *Tap a category below to view commands!*\n` +
+                              `👇 *Reply with a number below to view commands!*\n` +
                               `*━━━━━━━━━━━━━━━━━━━━━━━━━━*\n\n` +
-                              `_Sole Contributor: *Alinshan*_`;
+                              `1️⃣ 👥 Group Admin\n` +
+                              `2️⃣ 📥 Downloaders\n` +
+                              `3️⃣ ⚙️ Owner / Sudo\n` +
+                              `4️⃣ 📜 All Commands\n\n` +
+                              `_Developer: *Alinshan*_`;
 
-        await sendReply(dashboardText);
-
-        // Send the interactive poll
-        try {
-            await sock.sendMessage(grupId, {
-                poll: {
-                    name: "⚔️ Zoro Menu — Select a category:",
-                    values: [
-                        "👥 Group Admin",
-                        "📥 Downloaders",
-                        "⚙️ Owner / Sudo",
-                        "📜 All Commands"
-                    ],
-                    selectableCount: 1
-                }
-            });
-        } catch (pollErr) {
-            console.error("[menu] Failed to send poll:", pollErr.message);
-        }
-        return;
+        return await sendReply(dashboardText);
     }
 
     if (["all", "group", "download", "owner"].includes(inputCommand)) {
@@ -183,7 +167,7 @@ addCommand({ pattern: "onMessage", access: "all", dontAddCommandList: true }, as
     const quotedText = quotedMsg.conversation || quotedMsg.extendedTextMessage?.text || quotedMsg.imageMessage?.caption || "";
     if (!quotedText) return;
 
-    if (quotedText.includes("RORONOA ZORO MENU") || quotedText.includes("RORONOA ZORO CONSOLE") || quotedText.includes("Zoro Bot Dashboard")) {
+    if (quotedText.includes("ZORO MENU") || quotedText.includes("RORONOA ZORO MENU") || quotedText.includes("RORONOA ZORO CONSOLE") || quotedText.includes("Zoro Bot Dashboard")) {
         const categoryMap = { "1": "group", "2": "download", "3": "owner", "4": "all" };
         const category = categoryMap[text];
         const userId = msg.key.participant || msg.key.remoteJid;

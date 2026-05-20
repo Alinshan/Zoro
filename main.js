@@ -87,19 +87,7 @@ const logger = pino({
   },
 });
 
-// ── In-memory message store (needed for poll vote resolution) ────────────────
-const messageStore = {};
-function storeMessage(jid, message) {
-  if (!messageStore[jid]) messageStore[jid] = {};
-  messageStore[jid][message.key.id] = message;
-  // Keep only last 200 messages per chat to avoid memory leaks
-  const keys = Object.keys(messageStore[jid]);
-  if (keys.length > 200) delete messageStore[jid][keys[0]];
-}
-function getStoredMessage(jid, id) {
-  return messageStore[jid]?.[id] || null;
-}
-global.getStoredMessage = getStoredMessage;
+
 
 // ── Global error reporter → DMs error to bot's own number ────────────────────
 global.reportError = async function(context, error) {
@@ -156,12 +144,7 @@ async function Primon() {
     markOnlineOnConnect: false,
     browser: ["Ubuntu", "Chrome", "20.0.04"],
     auth: state,
-    version: version,
-    // Provide getMessage so Baileys can re-decrypt poll votes
-    getMessage: async (key) => {
-      const stored = getStoredMessage(key.remoteJid, key.id);
-      return stored?.message || undefined;
-    }
+    version: version
   });
 
   sock.ev.on('connection.update', async (update) => {
@@ -188,8 +171,7 @@ async function Primon() {
       if (!msg.hasOwnProperty("messages") || msg.messages.length === 0) return;
 
       for (let m of msg.messages) {
-        // Store every message for poll resolution
-        if (m.key?.remoteJid && m.key?.id) storeMessage(m.key.remoteJid, m);
+
         if (m.pushName) {
           const rawSender = m.key.participant || (m.key.fromMe ? sock.user.id : m.key.remoteJid);
           const sender = rawSender.split(':')[0].split('@')[0] + "@s.whatsapp.net";
@@ -329,73 +311,7 @@ async function Primon() {
     }
   })
 
-  // ── Poll vote handler for interactive menu ────────────────────────────────
-  sock.ev.on('messages.update', async (events) => {
-    for (const { key, update } of events) {
-      try {
-        if (!update.pollUpdates) continue;
 
-        // Retrieve the original poll message from our in-memory store
-        const pollStore = global.getStoredMessage(key.remoteJid, key.id);
-        if (!pollStore?.message?.pollCreationMessage) {
-          console.log('[poll-handler] Original poll message not found in memory store:', key.id);
-          continue;
-        }
-
-        const pollName = pollStore.message.pollCreationMessage.name || "";
-        if (!pollName.includes("Zoro Menu")) continue;
-
-        // Use Baileys utility to decrypt and aggregate votes
-        const { getAggregateVotesInPollMessage } = require('@whiskeysockets/baileys');
-        const pollVote = await getAggregateVotesInPollMessage({
-          message: pollStore.message,
-          pollUpdates: update.pollUpdates,
-        });
-
-        if (!pollVote || pollVote.length === 0) continue;
-
-        // Find the option with the most votes (or the one they just voted for)
-        // pollVote returns array of { name: 'option string', voters: ['jid'] }
-        const votedOption = pollVote.find(v => v.voters.length > 0)?.name;
-        if (!votedOption) continue;
-
-        const categoryMap = {
-          "👥 Group Admin": "group",
-          "📥 Downloaders": "download",
-          "⚙️ Owner / Sudo": "owner",
-          "📜 All Commands": "all"
-        };
-
-        const category = categoryMap[votedOption];
-        if (!category) continue;
-
-        // Figure out who voted based on the voters array
-        const voterJid = pollVote.find(v => v.voters.length > 0)?.voters[0];
-        if (!voterJid) continue;
-
-        const chatId = key.remoteJid;
-        const isSudo = voterJid === sock.user.id.split(':')[0] + '@s.whatsapp.net' || global.isSudo(voterJid);
-        const fakeMsg = { key: { remoteJid: chatId, participant: voterJid, fromMe: voterJid.startsWith(sock.user.id.split(':')[0]) } };
-
-        if (typeof global.buildCategoryText !== 'function') {
-          await global.reportError('poll-handler', new Error('buildCategoryText not loaded yet'));
-          continue;
-        }
-
-        const menuText = global.buildCategoryText(category, global.commands, fakeMsg, sock, isSudo);
-        
-        // Quote the original poll message
-        const quotedMsg = {
-          key,
-          message: pollStore.message
-        };
-        await sock.sendMessage(chatId, { text: menuText }, { quoted: quotedMsg });
-
-      } catch (pollErr) {
-        await global.reportError('poll-handler', pollErr);
-      }
-    }
-  });
 
   sock.ev.on('creds.update', saveCreds)
 

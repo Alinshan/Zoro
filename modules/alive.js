@@ -7,15 +7,19 @@ addCommand({ pattern: "^alive$", access: "all", desc: "_Check if the bot is aliv
     const userJid = msg.key.participant || msg.key.remoteJid;
     const userName = userJid.split('@')[0];
 
-    const body = aliveMessage.content || "💚 *Roronoa Zoro is Alive and Running!* 💚";
+    const body = aliveMessage.content || "💚 *Zoro is Alive and Running!* 💚";
 
-    const consoleText = `⚔️ *RORONOA ZORO CONSOLE* ⚔️\n\n` +
+    const consoleText = `⚔️ *ZORO CONSOLE* ⚔️\n\n` +
                         `💚 *Hello @${userName}!*\n` +
                         `${body}\n\n` +
                         `*━━━━━━━━━━━━━━━━━━━━━━━━━━*\n` +
-                        `👇 *Tap a category below to view commands!*\n` +
+                        `👇 *Reply with a number below to view commands!*\n` +
                         `*━━━━━━━━━━━━━━━━━━━━━━━━━━*\n\n` +
-                        `_Sole Contributor: *Alinshan*_`;
+                        `1️⃣ 👥 Group Admin\n` +
+                        `2️⃣ 📥 Downloaders\n` +
+                        `3️⃣ ⚙️ Owner / Sudo\n` +
+                        `4️⃣ 📜 All Commands\n\n` +
+                        `_Developer: *Alinshan*_`;
 
     try {
         if (aliveMessage.type !== "text") {
@@ -42,21 +46,5 @@ addCommand({ pattern: "^alive$", access: "all", desc: "_Check if the bot is aliv
         await sock.sendMessage(grupId, { text: consoleText, mentions: [userJid] }, { quoted: rawMessage.messages[0] });
     }
 
-    // Send interactive poll for category selection
-    try {
-        await sock.sendMessage(grupId, {
-            poll: {
-                name: "⚔️ Zoro Menu — Select a category:",
-                values: [
-                    "👥 Group Admin",
-                    "📥 Downloaders",
-                    "⚙️ Owner / Sudo",
-                    "📜 All Commands"
-                ],
-                selectableCount: 1
-            }
-        });
-    } catch (pollErr) {
-        console.error("Failed to send poll: ", pollErr);
-    }
+
 });
