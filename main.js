@@ -185,7 +185,25 @@ app.get('/', async (req, res) => {
   return res.send(waitingHTML);
 });
 
-app.listen(PORT, () => console.log(`🌐 Web server running on port ${PORT}`));
+app.listen(PORT, () => {
+  console.log(`🌐 Web server running on port ${PORT}`);
+  
+  // Keep-alive: Self-pinging to prevent Render free-tier from sleeping
+  const renderUrl = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL;
+  if (renderUrl) {
+    console.log(`[Keep-Alive] Self-ping active for URL: ${renderUrl}`);
+    setInterval(async () => {
+      try {
+        await axios.get(renderUrl);
+        console.log(`[Keep-Alive] Pinged self successfully at: ${new Date().toISOString()}`);
+      } catch (err) {
+        console.error(`[Keep-Alive] Self-ping failed:`, err.message);
+      }
+    }, 5 * 60 * 1000); // Ping every 5 minutes (Render sleep timeout is 15 minutes)
+  } else {
+    console.log(`[Keep-Alive] No RENDER_EXTERNAL_URL or PUBLIC_URL environment variable found. Self-ping inactive.`);
+  }
+});
 // ────────────────────────────────────────────────────────────────────────────
 
 

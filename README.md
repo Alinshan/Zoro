@@ -140,8 +140,12 @@ Wake Zoro up using the command prefixes: `.`, `/`, or `!` ⚔️
 ## 🚀 Cloud Deployment (Highly Recommended)
 
 > [!TIP]
-> **Free 24/7 Premium Uptime** 🕒
-> Running Zoro on Render with MongoDB Atlas ensures persistent session storage (never scan QR code twice) and runs completely free with automatic deployments on git pushes.
+> **Free 24/7 Premium Uptime & Keep-Alive** 🕒
+> Running Zoro on Render with MongoDB Atlas ensures persistent session storage (never scan the QR code twice).
+> 
+> Zoro has a **built-in keep-alive self-pinging mechanism** that automatically reads the `RENDER_EXTERNAL_URL` environment variable (injected by Render) and pings itself every 5 minutes to prevent the Render container from sleeping/going offline.
+>
+> If you notice any lag or connection issues, you can also use a free third-party pinging service like **[cron-job.org](https://cron-job.org/)** or **[UptimeRobot](https://uptimerobot.com/)** configured to ping your Render URL (`https://your-app-name.onrender.com/`) every 5 minutes. This ensures the service stays active 24/7.
 
 ### 🗺️ Visual Setup Pipeline
 
