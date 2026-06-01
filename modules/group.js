@@ -76,16 +76,15 @@ async function resolveToPN(sock, groupId, jid) {
  */
 async function replaceUserPosition(sock, groupJid, userJid, argm) {
     try {
-        // Resolve to PN if it's a LID
         const resolvedJid = await resolveToPN(sock, groupJid, userJid);
         console.log(`[replaceUserPosition] Action: ${argm}, JID: ${userJid} -> resolved: ${resolvedJid}`);
         var result = await sock.groupParticipantsUpdate(groupJid, [resolvedJid], argm);
         if (result && result[0] && (result[0].status == "200" || result[0].status === 200)) return true;
         console.log(`[replaceUserPosition] Failed result:`, JSON.stringify(result));
-        return false;
+        return result ? JSON.stringify(result) : "Empty result";
     } catch (error) {
         console.error(`[replaceUserPosition] Error:`, error.message);
-        return false;
+        return error.message || "Unknown error";
     }
 }
 
@@ -145,10 +144,10 @@ addCommand({ pattern: "^ban ?(.*)", desc: "Allows you to ban a person from the g
         return await reply(sock, groupId, msg, rawMessage, "_Please reply to someone or mention them!_");
     }
 
-    if (result) {
+    if (result === true) {
         return await reply(sock, groupId, msg, rawMessage, "_✅ The person has been successfully banned from the group!_");
     } else {
-        return await reply(sock, groupId, msg, rawMessage, "_❌ Sorry, an error occurred while trying to ban the user!_");
+        return await reply(sock, groupId, msg, rawMessage, `_❌ Sorry, an error occurred while trying to ban the user! Debug: ${result}_`);
     }
 }));
 
