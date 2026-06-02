@@ -1,6 +1,7 @@
 const ffmpeg = require('fluent-ffmpeg');
 const ffmpegInstaller = require('@ffmpeg-installer/ffmpeg');
 const path = require('path');
+const os = require('os');
 const fs = require('fs');
 
 ffmpeg.setFfmpegPath(ffmpegInstaller.path);
@@ -12,7 +13,7 @@ ffmpeg.setFfmpegPath(ffmpegInstaller.path);
  */
 function convertToOpus(inputPath) {
     return new Promise((resolve, reject) => {
-        const outputPath = path.join(__dirname, '..', 'session', `temp_${Date.now()}_${Math.random().toString(36).substring(7)}.ogg`);
+        const outputPath = path.join(os.tmpdir(), `temp_${Date.now()}_${Math.random().toString(36).substring(7)}.ogg`);
         
         ffmpeg(inputPath)
             .audioCodec('libopus')

@@ -38,7 +38,12 @@ addCommand({ pattern: "onMessage", dontAddCommandList: true, access: "all" }, as
             
             // Convert to OPUS to ensure it plays on mobile devices
             const { convertToOpus } = require('../src/toOpus');
-            const opusPath = await convertToOpus(filePath);
+            let opusPath = filePath;
+            try {
+                opusPath = await convertToOpus(filePath);
+            } catch (err) {
+                console.error('[voice_reply] Failed to convert to OPUS:', err);
+            }
 
             // Reply with the matched audio file converted as a Voice Note (ptt: true)
             await sock.sendMessage(msg.key.remoteJid, {
@@ -48,9 +53,11 @@ addCommand({ pattern: "onMessage", dontAddCommandList: true, access: "all" }, as
             }, { quoted: rawMessage.messages[0] });
 
             // Clean up temporary opus file after sending
-            setTimeout(() => {
-                try { fs.unlinkSync(opusPath); } catch (e) {}
-            }, 10000);
+            if (opusPath !== filePath) {
+                setTimeout(() => {
+                    try { fs.unlinkSync(opusPath); } catch (e) {}
+                }, 10000);
+            }
         }
     } catch (err) {
         console.error('[voice_reply] Error:', err.message);
