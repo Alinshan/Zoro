@@ -83,7 +83,7 @@ function buildCategoryListMessage(category, commands, msg, sock, isSudo) {
             return {
                 title: cmd,
                 description: desc ? desc.replace(/_/g, '') : "Tap to use this command",
-                rowId: cmd
+                id: cmd
             };
         })
         .slice(0, 24); // WhatsApp list max is 24 rows total across all sections
@@ -155,13 +155,29 @@ addCommand({ pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: tru
 
     async function sendListMessage(listData) {
         return await sendRawProto(sock, grupId, {
-            listMessage: {
-                title: listData.title,
-                description: listData.text,
-                footerText: listData.footer,
-                buttonText: listData.buttonText,
-                listType: 1,
-                sections: listData.sections
+            viewOnceMessage: {
+                message: {
+                    interactiveMessage: {
+                        header: {
+                            title: listData.title,
+                            subtitle: "Commands",
+                            hasMediaAttachment: false
+                        },
+                        body: { text: listData.text },
+                        footer: { text: listData.footer },
+                        nativeFlowMessage: {
+                            buttons: [
+                                {
+                                    name: "single_select",
+                                    buttonParamsJson: JSON.stringify({
+                                        title: listData.buttonText,
+                                        sections: listData.sections
+                                    })
+                                }
+                            ]
+                        }
+                    }
+                }
             }
         }, rawMessage.messages[0]);
     }
@@ -208,7 +224,7 @@ addCommand({ pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: tru
                 return {
                     title: cmd,
                     description: desc ? desc.replace(/_/g, '').slice(0, 72) : "Tap to run this command",
-                    rowId: cmd
+                    id: cmd
                 };
             })
             .slice(0, 24);
