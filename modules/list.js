@@ -115,6 +115,20 @@ global.buildCategoryText = buildCategoryText;
 global.buildCategoryListMessage = buildCategoryListMessage;
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Helper: send raw proto message (needed for buttons/lists in this Baileys version)
+// ─────────────────────────────────────────────────────────────────────────────
+async function sendRawProto(sock, jid, protoContent, quoted) {
+    const baileys = await import('@whiskeysockets/baileys');
+    const { generateWAMessageFromContent, proto } = baileys;
+    const msg = generateWAMessageFromContent(jid, proto.Message.fromObject(protoContent), {
+        userJid: sock.user.id,
+        quoted: quoted || undefined
+    });
+    await sock.relayMessage(jid, msg.message, { messageId: msg.key.id });
+    return msg;
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // MENU command
 // ─────────────────────────────────────────────────────────────────────────────
 addCommand({ pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: true }, async (msg, match, sock, rawMessage) => {
@@ -139,8 +153,17 @@ addCommand({ pattern: "^men(u|ü) ?(.*)", access: "all", dontAddCommandList: tru
         }
     }
 
-    async function sendListMessage(listMsg) {
-        return await sock.sendMessage(grupId, { listMessage: listMsg }, { quoted: rawMessage.messages[0] });
+    async function sendListMessage(listData) {
+        return await sendRawProto(sock, grupId, {
+            listMessage: {
+                title: listData.title,
+                description: listData.text,
+                footerText: listData.footer,
+                buttonText: listData.buttonText,
+                listType: 1,
+                sections: listData.sections
+            }
+        }, rawMessage.messages[0]);
     }
 
     if (!inputCommand) inputCommand = "all";
