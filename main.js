@@ -273,9 +273,6 @@ async function Primon() {
   useMultiFileAuthState = baileys.useMultiFileAuthState;
   fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion;
   downloadContentFromMessage = baileys.downloadContentFromMessage;
-  const makeInMemoryStore = baileys.makeInMemoryStore;
-
-  const store = makeInMemoryStore({ logger: pino().child({ level: 'silent', stream: 'store' }) });
 
   const { version } = await fetchLatestBaileysVersion();
   let state, saveCreds;
@@ -314,17 +311,11 @@ async function Primon() {
     version: version,
     generateHighQualityLinkPreview: true,
     getMessage: async (key) => {
-      if (store) {
-        const msg = await store.loadMessage(key.remoteJid, key.id);
-        return msg?.message || undefined;
-      }
       return {
         conversation: "Zoro Bot"
       };
     }
   });
-
-  store.bind(sock.ev);
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update;
