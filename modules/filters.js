@@ -16,11 +16,28 @@ addCommand( {pattern: "onMessage", dontAddCommandList: true, access: "all"}, asy
                     if (isAudio) {
                         let audioUrl = outgoing.replace(/^(audio:|vn:)/i, "").trim();
                         const asVoiceNote = !outgoing.startsWith("audio:");
-                        return await sock.sendMessage(msg.key.remoteJid, {
-                            audio: { url: audioUrl },
+                        
+                        const { convertToOpus } = require('../src/toOpus');
+                        let finalAudioUrl = audioUrl;
+                        try {
+                            finalAudioUrl = await convertToOpus(audioUrl);
+                        } catch (err) {
+                            console.error('[filters] Failed to convert audio to OPUS:', err);
+                        }
+
+                        const result = await sock.sendMessage(msg.key.remoteJid, {
+                            audio: { url: finalAudioUrl },
                             mimetype: 'audio/ogg; codecs=opus',
                             ptt: asVoiceNote
                         }, { quoted: rawMessage.messages[0] });
+
+                        if (finalAudioUrl !== audioUrl) {
+                            setTimeout(() => {
+                                try { require('fs').unlinkSync(finalAudioUrl); } catch (e) {}
+                            }, 10000);
+                        }
+                        
+                        return result;
                     }
 
                     // 2. Video
@@ -45,11 +62,29 @@ addCommand( {pattern: "onMessage", dontAddCommandList: true, access: "all"}, asy
                 // 4. Prefix overrides (vn:, audio:, video:, image:, sticker:)
                 if (outgoing.startsWith("vn:") || outgoing.startsWith("audio:")) {
                     let audioUrl = outgoing.replace(/^(audio:|vn:)/i, "").trim();
-                    return await sock.sendMessage(msg.key.remoteJid, {
-                        audio: { url: audioUrl },
+                    const asVoiceNote = outgoing.startsWith("vn:");
+                    
+                    const { convertToOpus } = require('../src/toOpus');
+                    let finalAudioUrl = audioUrl;
+                    try {
+                        finalAudioUrl = await convertToOpus(audioUrl);
+                    } catch (err) {
+                        console.error('[filters] Failed to convert audio to OPUS:', err);
+                    }
+
+                    const result = await sock.sendMessage(msg.key.remoteJid, {
+                        audio: { url: finalAudioUrl },
                         mimetype: 'audio/ogg; codecs=opus',
-                        ptt: outgoing.startsWith("vn:")
+                        ptt: asVoiceNote
                     }, { quoted: rawMessage.messages[0] });
+                    
+                    if (finalAudioUrl !== audioUrl) {
+                        setTimeout(() => {
+                            try { require('fs').unlinkSync(finalAudioUrl); } catch (e) {}
+                        }, 10000);
+                    }
+                    
+                    return result;
                 }
                 if (outgoing.startsWith("video:")) {
                     let videoUrl = outgoing.replace(/^video:/i, "").trim();
