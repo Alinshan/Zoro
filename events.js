@@ -56,7 +56,10 @@ function addCommand(commandInfo, callback) {
 
 async function start_command(msg, sock, rawMessage) {  
   let text =  
-    msg?.message?.conversation || msg?.message?.extendedTextMessage?.text;  
+    msg?.message?.conversation ||
+    msg?.message?.extendedTextMessage?.text ||
+    msg?.message?.imageMessage?.caption ||
+    msg?.message?.videoMessage?.caption;  
 
   if (msg?.message?.buttonsResponseMessage?.selectedButtonId) {
     text = msg.message.buttonsResponseMessage.selectedButtonId;

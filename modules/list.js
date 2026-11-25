@@ -16,7 +16,7 @@ function buildCategoryText(category, commands, msg, sock, isSudo) {
         );
     } else if (category === "download") {
         filtered = commands.filter(x =>
-            ["video", "music", "tiktok", "insta", "wp", "ss", "dream"].some(p =>
+            ["video", "music", "tiktok", "insta", "wp", "ss", "dream", "sticker", "asticker"].some(p =>
                 x.commandInfo.pattern.includes(p)
             )
         );

@@ -274,6 +274,18 @@ async function Primon() {
   fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion;
   downloadContentFromMessage = baileys.downloadContentFromMessage;
 
+  try {
+    const { initAudioSticker } = require('./src/audioSticker');
+    initAudioSticker({
+      proto: baileys.proto,
+      prepareWAMessageMedia: baileys.prepareWAMessageMedia,
+      downloadContentFromMessage: baileys.downloadContentFromMessage,
+      baileys
+    });
+  } catch (err) {
+    console.error('Failed to init audio sticker hooks:', err.message);
+  }
+
   const { version } = await fetchLatestBaileysVersion();
   let state, saveCreds;
 
@@ -365,7 +377,9 @@ async function Primon() {
 
       const rawMessage = structuredClone(msg);
       msg = msg.messages[0];
-      const quotedMessage = msg?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
+      const { extractContextInfo } = require('./src/audioSticker');
+      const ctxInfo = extractContextInfo(msg?.message);
+      const quotedMessage = ctxInfo?.quotedMessage || msg?.message?.extendedTextMessage?.contextInfo?.quotedMessage;
       msg.quotedMessage = quotedMessage;
 
       if ((msg.key && msg.key.remoteJid === "status@broadcast")) return;

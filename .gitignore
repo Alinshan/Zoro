@@ -9,3 +9,5 @@ package-lock.json
 *test.js
 .readme
 test_modules
+media/_cache_audio.ogg
+media/_chat_audio_*.ogg

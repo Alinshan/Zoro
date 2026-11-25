@@ -66,6 +66,9 @@ Wake Zoro up using the command prefixes: `.`, `/`, or `!` ⚔️
 | Command           | Description                                                  | Usage Example                                          |
 | :---------------- | :----------------------------------------------------------- | :----------------------------------------------------- |
 | 🖼️ **`.sticker`**  | Convert static/animated image, video, or GIF into a sticker  | *Reply to image/video* with `.sticker`                 |
+| 🔊 **`.asticker`** | Create WhatsApp Audio Stickers with sound (video, image, or audio) | *Reply to media* with `.asticker [crop/right/original]` |
+| 🎵 **`.chataudio`** | Set custom sound for audio stickers in this chat | *Reply to audio/video* with `.chataudio` (or `reset`) |
+| 🏭 **`.audiofactory`** | Toggle auto audio-sticker factory for the chat | `.audiofactory on` or `.audiofactory off` |
 | 🔄 **`.vsticker`** | Extract and convert animated stickers back into MP4 videos    | *Reply to sticker* with `.vsticker`                    |
 | 🔠 **`.attp`**     | Generate dynamic, rainbow animated text-to-stickers          | `.attp Zoro`                                           |
 | 💬 **`.q`**        | Convert messages into elegant quotes formatted as stickers   | *Reply to message* with `.q -cyan`                      |

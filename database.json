@@ -137,5 +137,6 @@
     "content": "_I'am currently AFK! Please contact me later._",
     "active": false
   },
+  "audioStickerChats": [],
   "users": {}
 }

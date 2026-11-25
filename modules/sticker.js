@@ -50,12 +50,28 @@ async function animatedWebpToMp4(file) {
     }
 }
 
-addCommand({ pattern: "^sticker$", access: "all", desc: "_Convert an media to a sticker or both._" }, async (msg, match, sock, rawMessage) => {
+addCommand({ pattern: "^sticker ?(.*)", access: "all", desc: "_Convert a media to a sticker (or use .asticker for audio stickers)._" }, async (msg, match, sock, rawMessage) => {
+    const sub = (match[1] || '').trim().toLowerCase();
+    if (sub === 'audio' || sub === '-a' || sub === 'som') {
+        const astickerCmd = global.commands.find(c => c.commandInfo.pattern.includes('asticker'));
+        if (astickerCmd) {
+            return await astickerCmd.callback(msg, [null, 'asticker', ''], sock, rawMessage);
+        }
+    }
+
     if (!msg.quotedMessage) {
         if (msg.key.fromMe) {
-            return await sock.sendMessage(msg.key.remoteJid, { text: "_❌ Please reply an image, video or sticker!_", edit: msg.key });
+            return await sock.sendMessage(msg.key.remoteJid, { text: "_❌ Please reply an image, video or sticker! (Use " + global.handlers[0] + "asticker for audio stickers)_", edit: msg.key });
         } else {
-            return await sock.sendMessage(msg.key.remoteJid, { text: "_❌ Please reply an image, video or sticker!_" }, { quoted: rawMessage.messages[0] });
+            return await sock.sendMessage(msg.key.remoteJid, { text: "_❌ Please reply an image, video or sticker! (Use " + global.handlers[0] + "asticker for audio stickers)_" }, { quoted: rawMessage.messages[0] });
+        }
+    }
+
+    if (msg.quotedMessage?.audioMessage) {
+        if (msg.key.fromMe) {
+            return await sock.sendMessage(msg.key.remoteJid, { text: "_💡 Use_ ```" + global.handlers[0] + "asticker``` _to create an Audio Sticker from audio/voice notes!_", edit: msg.key });
+        } else {
+            return await sock.sendMessage(msg.key.remoteJid, { text: "_💡 Use_ ```" + global.handlers[0] + "asticker``` _to create an Audio Sticker from audio/voice notes!_" }, { quoted: rawMessage.messages[0] });
         }
     }
     if (msg.key.fromMe) {
