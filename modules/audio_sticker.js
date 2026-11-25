@@ -140,14 +140,18 @@ addCommand({
   pattern: "^(asticker|audiosticker|soundsticker|as) ?(.*)",
   access: "all",
   desc: "_Create a WhatsApp Audio Sticker (figurinha com som) from image, video, sticker, or audio._",
-  usage: ".asticker [crop|center|right|full|original]"
+  usage: ".asticker [square|round|center|right|original]"
 }, async (msg, match, sock, rawMessage) => {
   const jid = msg.key.remoteJid;
   const args = (match[2] || '').trim().toLowerCase();
 
-  // Mode detection
+  // Mode detection — square & round added
   let mode = 'full';
-  if (args.includes('center') || args.includes('crop') || args.includes('centro') || args.includes('corte')) {
+  if (args.includes('square')) {
+    mode = 'square';
+  } else if (args.includes('round') || args.includes('circle')) {
+    mode = 'round';
+  } else if (args.includes('center') || args.includes('crop') || args.includes('centro') || args.includes('corte')) {
     mode = 'center';
   } else if (args.includes('right') || args.includes('direita')) {
     mode = 'right';
@@ -232,7 +236,7 @@ addCommand({
       sock,
       msg,
       rawMessage,
-      `_❌ Please reply to an image, video, sticker, or audio file!_\n\n*Usage:* \`\`\`${global.handlers[0]}asticker [crop|center|right|full|original]\`\`\`\n• Reply to video with sound: keeps sound & animates\n• Reply to image/sticker: attaches chat/default sound\n• Reply to audio: creates sound sticker`
+      `_❌ Please reply to an image, video, sticker, or audio file!_\n\n*Usage:* \`\`\`${global.handlers[0]}asticker [square|round|center|right|original]\`\`\`\n• \`square\` — crop to square (no black bars)\n• \`round\` — circular crop\n• \`center\` — center crop\n• \`original\` — keep video's own audio\n• Reply to video with sound: auto-animates\n• Reply to image/sticker: attaches chat/default sound`
     );
   }
 

@@ -329,13 +329,24 @@ function scaleFilter(mode = 'full', isVideo = false) {
   if (m === 'direita' || m === 'right') {
     return `${fps}scale=512:512:force_original_aspect_ratio=increase,crop=512:512:iw-512:0`;
   }
-  if (m === 'centro' || m === 'center' || m === 'corte' || m === 'crop') {
+  // square, center, crop, centro, corte — all center-crop (no padding, no black bars)
+  if (m === 'square' || m === 'centro' || m === 'center' || m === 'corte' || m === 'crop') {
     return `${fps}scale=512:512:force_original_aspect_ratio=increase,crop=512:512`;
   }
-  return `${fps}scale=512:512:force_original_aspect_ratio=decrease,pad=512:512:(ow-iw)/2:(oh-ih)/2:color=0x00000000`;
+  // round — center-crop, circular mask applied separately via imageToWebpRound
+  if (m === 'round' || m === 'circle' || m === 'circular') {
+    return `${fps}scale=512:512:force_original_aspect_ratio=increase,crop=512:512`;
+  }
+  // full/default — center-crop to avoid black bars (images from gallery)
+  // Previously used pad with transparent color but WhatsApp renders alpha as black
+  return `${fps}scale=512:512:force_original_aspect_ratio=increase,crop=512:512`;
 }
 
 async function imageToWebp(inPath, outWebp, mode = 'full') {
+  const m = String(mode).toLowerCase();
+  if (m === 'round' || m === 'circle' || m === 'circular') {
+    return imageToWebpRound(inPath, outWebp);
+  }
   await execFileAsync(ffmpegCmd, [
     '-y', '-i', inPath,
     '-vf', scaleFilter(mode, false),
@@ -344,10 +355,30 @@ async function imageToWebp(inPath, outWebp, mode = 'full') {
   ]);
 }
 
+/**
+ * Converts an image to a round (circular) WebP sticker using FFmpeg's geq filter.
+ */
+async function imageToWebpRound(inPath, outWebp) {
+  // Scale to 512x512 center-crop first, then apply circular alpha mask
+  const circleFilter = [
+    'scale=512:512:force_original_aspect_ratio=increase,crop=512:512',
+    'format=rgba',
+    'geq=r=\'r(X,Y)\':g=\'g(X,Y)\':b=\'b(X,Y)\':a=\'if(lte(pow(X-256,2)+pow(Y-256,2),pow(256,2)),255,0)\''
+  ].join(',');
+  await execFileAsync(ffmpegCmd, [
+    '-y', '-i', inPath,
+    '-vf', circleFilter,
+    '-vcodec', 'libwebp', '-lossless', '1',
+    outWebp
+  ]);
+}
+
 async function videoToAnimatedWebp(inPath, outWebp, mode = 'full') {
+  // For animated WebP, always use center-crop (pad causes black bars in animated stickers)
+  const videoMode = (mode === 'full') ? 'square' : mode;
   await execFileAsync(ffmpegCmd, [
     '-y', '-i', inPath, '-t', String(MAX_VIDEO_SECONDS),
-    '-vf', scaleFilter(mode, true),
+    '-vf', scaleFilter(videoMode, true),
     '-vcodec', 'libwebp', '-lossless', '0', '-compression_level', '6',
     '-q:v', '60', '-loop', '0', '-preset', 'picture', '-an', '-vsync', '0',
     outWebp
@@ -572,6 +603,7 @@ module.exports = {
   ensureDefaultAudio,
   scaleFilter,
   imageToWebp,
+  imageToWebpRound,
   videoToAnimatedWebp,
   unwrapMessage,
   extractContextInfo,
