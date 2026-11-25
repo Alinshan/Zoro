@@ -661,15 +661,29 @@ async function initializeBaileys(forcePhone = false, phoneNumber = null) {
 
     if (process.env.MONGODB_URI) {
         if (!mongoClient) {
-            mongoClient = new MongoClient(process.env.MONGODB_URI);
-            await mongoClient.connect();
-            db = mongoClient.db('zoro_bot');
-            authCollection = db.collection('auth_state');
+            try {
+                mongoClient = new MongoClient(process.env.MONGODB_URI);
+                await mongoClient.connect();
+                db = mongoClient.db('zoro_bot');
+                authCollection = db.collection('auth_state');
+                console.log('[Dashboard] MongoDB connected successfully.');
+            } catch (mongoErr) {
+                console.warn('[Dashboard] MongoDB connection failed, falling back to local file session:', mongoErr.message);
+                mongoClient = null;
+                db = null;
+                authCollection = null;
+            }
         }
-        const { useMongoDBAuthState } = require('./mongoAuth');
-        const auth = await useMongoDBAuthState(authCollection);
-        state = auth.state;
-        saveCreds = auth.saveCreds;
+        if (authCollection) {
+            const { useMongoDBAuthState } = require('./mongoAuth');
+            const auth = await useMongoDBAuthState(authCollection);
+            state = auth.state;
+            saveCreds = auth.saveCreds;
+        } else {
+            const auth = await useMultiFileAuthState(SESSION_PATH);
+            state = auth.state;
+            saveCreds = auth.saveCreds;
+        }
     } else {
         const auth = await useMultiFileAuthState(SESSION_PATH);
         state = auth.state;
