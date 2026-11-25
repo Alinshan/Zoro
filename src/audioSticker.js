@@ -533,7 +533,10 @@ async function sendAudioSticker(sock, jid, options = {}) {
     }
   }
 
-  const { oggPath, duracao } = audioInfo || (await ensureDefaultAudio());
+  if (!audioInfo) {
+    throw new Error('No audioInfo provided for sendAudioSticker');
+  }
+  const { oggPath, duracao } = audioInfo;
 
   const stickerMedia = await prepareMedia(
     { sticker: { url: webpPath } },

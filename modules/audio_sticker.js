@@ -26,6 +26,11 @@ if (!global.database.audioStickerChats) {
   global.database.audioStickerChats = [];
 }
 
+// Recent media tracking for smart pairing across consecutive messages
+const chatRecentVisuals = new Map(); // jid -> { visual, ref, time }
+const chatRecentAudios = new Map();  // jid -> { audioSource, ref, time }
+const RECENT_MEDIA_TIMEOUT = 10 * 60 * 1000; // 10 minutes
+
 /**
  * Helper to reply or edit message depending on fromMe
  */
@@ -56,40 +61,45 @@ async function processAndSendAudioSticker(sock, jid, mediaContent, messageRef, o
   const tmpOgg = path.resolve(os.tmpdir(), `astk_aout_${uid}.ogg`);
 
   try {
-    const rawBuffer = await downloadMediaBuffer(sock, messageRef, mediaContent);
     const mode = options.mode || 'full';
     let isAnimated = false;
     let audioInfo = null;
     let durationLimit = MAX_AUDIO_SECONDS;
 
-    const unwrapped = unwrapMessage(mediaContent);
-
-    if (unwrapped?.stickerMessage) {
-      if (unwrapped.stickerMessage.isLottie) {
-        throw new Error('Lottie stickers are not supported for audio stickers.');
-      }
-      isAnimated = Boolean(unwrapped.stickerMessage.isAnimated) || rawBuffer.includes(Buffer.from('ANIM'));
-      fs.writeFileSync(tmpWebp, rawBuffer);
-    } else if (unwrapped?.imageMessage) {
-      fs.writeFileSync(tmpIn, rawBuffer);
-      await imageToWebp(tmpIn, tmpWebp, mode);
+    if (mediaContent.localImage) {
+      await imageToWebp(mediaContent.localImage, tmpWebp, mode);
       isAnimated = false;
-    } else if (unwrapped?.videoMessage) {
-      fs.writeFileSync(tmpIn, rawBuffer);
-      durationLimit = await videoToAnimatedWebp(tmpIn, tmpWebp, mode);
-      isAnimated = true;
-
-      // If user wants original audio or video has audio and no custom audio override
-      const preferOriginal = options.forceOriginal || (!options.customAudioSource && !chatCustomAudios.has(jid));
-      if (preferOriginal && (await videoHasAudio(tmpIn))) {
-        const dur = await convertToOggOpus(tmpIn, tmpOgg, durationLimit);
-        audioInfo = { oggPath: tmpOgg, duracao: dur };
-      }
     } else {
-      throw new Error('Unsupported visual media format.');
+      const rawBuffer = await downloadMediaBuffer(sock, messageRef, mediaContent);
+      const unwrapped = unwrapMessage(mediaContent);
+
+      if (unwrapped?.stickerMessage) {
+        if (unwrapped.stickerMessage.isLottie) {
+          throw new Error('Lottie stickers are not supported for audio stickers.');
+        }
+        isAnimated = Boolean(unwrapped.stickerMessage.isAnimated) || rawBuffer.includes(Buffer.from('ANIM'));
+        fs.writeFileSync(tmpWebp, rawBuffer);
+      } else if (unwrapped?.imageMessage) {
+        fs.writeFileSync(tmpIn, rawBuffer);
+        await imageToWebp(tmpIn, tmpWebp, mode);
+        isAnimated = false;
+      } else if (unwrapped?.videoMessage) {
+        fs.writeFileSync(tmpIn, rawBuffer);
+        durationLimit = await videoToAnimatedWebp(tmpIn, tmpWebp, mode);
+        isAnimated = true;
+
+        // If user wants original audio or video has audio and no custom audio override
+        const preferOriginal = options.forceOriginal || (!options.customAudioSource && !chatCustomAudios.has(jid));
+        if (preferOriginal && (await videoHasAudio(tmpIn))) {
+          const dur = await convertToOggOpus(tmpIn, tmpOgg, durationLimit);
+          audioInfo = { oggPath: tmpOgg, duracao: dur };
+        }
+      } else {
+        throw new Error('Unsupported visual media format.');
+      }
     }
 
-    // If explicit custom audio source is provided (e.g., from quoted audio)
+    // If explicit custom audio source is provided (e.g., from quoted audio or paired audio)
     if (!audioInfo && options.customAudioSource) {
       const audioSource = options.customAudioSource;
       const audioBuf = await downloadMediaBuffer(sock, options.customAudioMsg || messageRef, audioSource.msgContent);
@@ -100,7 +110,7 @@ async function processAndSendAudioSticker(sock, jid, mediaContent, messageRef, o
       }
     }
 
-    // Check chat custom audio
+    // Check chat custom audio (.setaudio)
     if (!audioInfo && chatCustomAudios.has(jid)) {
       const savedAudio = chatCustomAudios.get(jid);
       if (fs.existsSync(savedAudio.oggPath)) {
@@ -110,9 +120,9 @@ async function processAndSendAudioSticker(sock, jid, mediaContent, messageRef, o
       }
     }
 
-    // Fallback to default audio
+    // Never attach unknown default voices — only user voice/audio
     if (!audioInfo) {
-      audioInfo = await ensureDefaultAudio();
+      throw new Error('NO_AUDIO_SOURCE');
     }
 
     // Send the final Audio Sticker
@@ -196,37 +206,35 @@ addCommand({
       customAudioSource = quotedAudio;
       customAudioMsg = quoted;
     }
-  } else if (quotedAudio) {
-    // Quoted an audio without visual: use bot logo as default visual
-    const logoPath = path.resolve(__dirname, '../src/zoro_logo.png');
-    if (fs.existsSync(logoPath)) {
-      const waitMsg = await sendFeedback(sock, msg, rawMessage, '_⏳ Creating audio sticker from voice/audio..._');
-      try {
-        const uid = `${Date.now()}_${crypto.randomBytes(3).toString('hex')}`;
-        const tmpWebp = path.resolve(os.tmpdir(), `astk_logo_${uid}.webp`);
-        const tmpAudioIn = path.resolve(os.tmpdir(), `astk_ain_${uid}`);
-        const tmpOgg = path.resolve(os.tmpdir(), `astk_aout_${uid}.ogg`);
+  }
 
-        await imageToWebp(logoPath, tmpWebp, 'full');
-        const audioBuf = await downloadMediaBuffer(sock, quoted, quotedAudio.msgContent);
-        fs.writeFileSync(tmpAudioIn, audioBuf);
-        const dur = await convertToOggOpus(tmpAudioIn, tmpOgg, MAX_AUDIO_SECONDS);
+  // If user replied .asticker to a voice note / audio:
+  if (quotedAudio && !targetVisual) {
+    customAudioSource = quotedAudio;
+    customAudioMsg = quoted;
 
-        await sendAudioSticker(sock, jid, {
-          webpPath: tmpWebp,
-          isAnimated: false,
-          audioInfo: { oggPath: tmpOgg, duracao: dur },
-          quoted: rawMessage.messages[0]
-        });
+    // Smart Pairing: Check if user recently sent an image in this chat!
+    const recentVis = chatRecentVisuals.get(jid);
+    if (recentVis && (Date.now() - recentVis.time < RECENT_MEDIA_TIMEOUT)) {
+      targetVisual = recentVis.visual;
+      targetVisualRef = recentVis.ref;
+    } else {
+      // Use Zoro logo as visual for standalone voice note
+      const logoPath = path.resolve(__dirname, '../src/zoro_logo.png');
+      if (fs.existsSync(logoPath)) {
+        targetVisual = { type: 'localImage', media: logoPath };
+        targetVisualRef = msg;
+      }
+    }
+  }
 
-        if (waitMsg) await sendFeedback(sock, msg, rawMessage, '_✅ Audio Sticker sent!_', waitMsg.key);
-
-        for (const f of [tmpWebp, tmpAudioIn, tmpOgg]) {
-          if (fs.existsSync(f)) try { fs.unlinkSync(f); } catch {}
-        }
-        return;
-      } catch (err) {
-        return await sendFeedback(sock, msg, rawMessage, `_❌ Error creating audio sticker: ${err.message}_`);
+  // If targetVisual is an image/sticker and has no audio, check if user sent a voice note recently!
+  if (targetVisual && targetVisual.type !== 'videoMessage' && !customAudioSource) {
+    if (!chatCustomAudios.has(jid)) {
+      const recentAud = chatRecentAudios.get(jid);
+      if (recentAud && (Date.now() - recentAud.time < RECENT_MEDIA_TIMEOUT)) {
+        customAudioSource = recentAud.audioSource;
+        customAudioMsg = recentAud.ref;
       }
     }
   }
@@ -236,14 +244,37 @@ addCommand({
       sock,
       msg,
       rawMessage,
-      `_❌ Please reply to an image, video, sticker, or audio file!_\n\n*Usage:* \`\`\`${global.handlers[0]}asticker [square|round|center|right|original]\`\`\`\n• \`square\` — crop to square (no black bars)\n• \`round\` — circular crop\n• \`center\` — center crop\n• \`original\` — keep video's own audio\n• Reply to video with sound: auto-animates\n• Reply to image/sticker: attaches chat/default sound`
+      `_❌ Please reply to an image, video, sticker, or voice note!_\n\n*Usage:* \`\`\`${global.handlers[0]}asticker [square|round|center|right|original]\`\`\``
+    );
+  }
+
+  // Strictly check that audio exists — NEVER generate with unknown sounds!
+  const isVideo = targetVisual.type === 'videoMessage';
+  const hasAudioSource = customAudioSource || chatCustomAudios.has(jid) || isVideo;
+
+  if (!hasAudioSource) {
+    return await sendFeedback(
+      sock,
+      msg,
+      rawMessage,
+      `_❌ No voice note or audio found!_\n` +
+      `_Zoro will only create audio stickers with YOUR voice note or audio._\n\n` +
+      `*How to add audio to your sticker:*\n` +
+      `1️⃣ Send an image, then send a voice note & reply \`${global.handlers[0]}asticker\`\n` +
+      `2️⃣ Or reply to any voice note with \`${global.handlers[0]}asticker\` (pairs with your last photo)\n` +
+      `3️⃣ Or set a permanent sound for this chat with \`${global.handlers[0]}setaudio\` (reply to audio)\n` +
+      `4️⃣ Or reply to a video with sound`
     );
   }
 
   const waitMsg = await sendFeedback(sock, msg, rawMessage, '_⏳ Creating audio sticker..._');
 
   try {
-    await processAndSendAudioSticker(sock, jid, { [targetVisual.type]: targetVisual.media }, targetVisualRef, {
+    const mediaPayload = targetVisual.type === 'localImage'
+      ? { localImage: targetVisual.media }
+      : { [targetVisual.type]: targetVisual.media };
+
+    await processAndSendAudioSticker(sock, jid, mediaPayload, targetVisualRef, {
       mode,
       forceOriginal,
       customAudioSource,
@@ -255,7 +286,11 @@ addCommand({
     }
   } catch (err) {
     console.error('[asticker] Error:', err);
-    await sendFeedback(sock, msg, rawMessage, `_❌ Failed to create audio sticker: ${err.message}_`, waitMsg?.key);
+    if (err.message === 'NO_AUDIO_SOURCE') {
+      await sendFeedback(sock, msg, rawMessage, `_❌ No audio source found! Please provide or reply to a voice note or audio._`, waitMsg?.key);
+    } else {
+      await sendFeedback(sock, msg, rawMessage, `_❌ Failed to create audio sticker: ${err.message}_`, waitMsg?.key);
+    }
   }
 });
 
@@ -398,6 +433,19 @@ addCommand({
 }, async (msg, match, sock, rawMessage) => {
   if (msg.key.fromMe) return;
   const jid = msg.key.remoteJid;
+
+  // Track recent visuals and audios for smart pairing across messages
+  try {
+    const incomingVis = extractVisualMedia(msg.message);
+    if (incomingVis) {
+      chatRecentVisuals.set(jid, { visual: incomingVis, ref: msg, time: Date.now() });
+    }
+    const incomingAud = extractAudioSource(msg.message);
+    if (incomingAud) {
+      chatRecentAudios.set(jid, { audioSource: incomingAud, ref: msg, time: Date.now() });
+    }
+  } catch {}
+
   if (!global.database.audioStickerChats?.includes(jid)) return;
 
   const msgId = msg.key.id;
