@@ -44,12 +44,24 @@ require('./events');
 var currentVersion = "", versionCheckInterval = 180
 var sock;
 
+// ── Anti-Crash Handlers ──────────────────────────────────────────────────────
+process.on('uncaughtException', (err) => {
+  console.error('[Anti-Crash] Uncaught Exception:', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+  console.error('[Anti-Crash] Unhandled Rejection:', reason?.message || reason);
+});
+
 // ── Web server for QR code scanning ─────────────────────────────────────────
 let qrDataURL = null;
 let botConnected = false;
 
 const app = express();
 const PORT = process.env.PORT || 3000;
+
+app.get('/ping', (req, res) => res.status(200).send('pong'));
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok', uptime: Math.floor(process.uptime()), timestamp: Date.now() }));
 
 app.get('/', async (req, res) => {
   const connectedHTML = `
@@ -191,15 +203,16 @@ app.listen(PORT, () => {
   // Keep-alive: Self-pinging to prevent Render free-tier from sleeping
   const renderUrl = process.env.RENDER_EXTERNAL_URL || process.env.PUBLIC_URL;
   if (renderUrl) {
-    console.log(`[Keep-Alive] Self-ping active for URL: ${renderUrl}`);
+    const targetUrl = renderUrl.endsWith('/') ? `${renderUrl}ping` : `${renderUrl}/ping`;
+    console.log(`[Keep-Alive] Self-ping active for URL: ${targetUrl}`);
     setInterval(async () => {
       try {
-        await axios.get(renderUrl);
+        await axios.get(targetUrl, { timeout: 15000 });
         console.log(`[Keep-Alive] Pinged self successfully at: ${new Date().toISOString()}`);
       } catch (err) {
         console.error(`[Keep-Alive] Self-ping failed:`, err.message);
       }
-    }, 5 * 60 * 1000); // Ping every 5 minutes (Render sleep timeout is 15 minutes)
+    }, 3 * 60 * 1000); // Ping every 3 minutes
   } else {
     console.log(`[Keep-Alive] No RENDER_EXTERNAL_URL or PUBLIC_URL environment variable found. Self-ping inactive.`);
   }
@@ -344,10 +357,13 @@ async function Primon() {
     if (connection === 'close') {
       qrDataURL = null;
       botConnected = false;
-      const shouldReconnect = (lastDisconnect?.error?.output?.statusCode !== 401);
+      const statusCode = lastDisconnect?.error?.output?.statusCode;
+      const shouldReconnect = (statusCode !== 401);
+      console.log(`[Baileys] Disconnected (code: ${statusCode || 'unknown'}). Reconnecting in 3s...`);
       if (shouldReconnect) {
-        console.log('Disconnected, reconnecting...');
-        Primon();
+        setTimeout(() => {
+          Primon();
+        }, 3000);
       } else {
         console.log('Session ended — please rescan the QR code.');
       }

@@ -25,8 +25,21 @@ let syncCountdown = 0;
 let connectionInfo = null;
 let isHandoff = false;
 
+// Anti-Crash Handlers
+process.on('uncaughtException', (err) => {
+    console.error('[Dashboard Anti-Crash] Uncaught Exception:', err?.message || err);
+});
+
+process.on('unhandledRejection', (reason) => {
+    console.error('[Dashboard Anti-Crash] Unhandled Rejection:', reason?.message || reason);
+});
+
 // Pino logger setup to be completely silent
 const logger = pino({ level: 'silent' });
+
+// Health and Ping endpoints for external uptime monitors
+app.get('/ping', (req, res) => res.status(200).send('pong'));
+app.get('/health', (req, res) => res.status(200).json({ status: 'ok', uptime: Math.floor(process.uptime()), timestamp: Date.now() }));
 
 // Serve HTML dashboard
 app.get('/', (req, res) => {
